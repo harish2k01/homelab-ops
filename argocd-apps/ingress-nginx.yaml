@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: https://kubernetes.github.io/ingress-nginx
+      chart: ingress-nginx
+      targetRevision: 4.15.1
+      helm:
+        valueFiles:
+          - $values/charts/ingress-nginx/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 3
