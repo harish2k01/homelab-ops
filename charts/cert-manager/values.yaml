@@ -323,11 +323,11 @@ config: {}
 # For more information, see the [cert-manager documentation](https://cert-manager.io/docs/configuration/acme/dns01/#setting-nameservers-for-dns01-self-check).
 
 # A comma-separated string with the host and port of the recursive nameservers cert-manager should query.
-dns01RecursiveNameservers: ""
+dns01RecursiveNameservers: "1.1.1.1:53,8.8.8.8:53"
 
 # Forces cert-manager to use only the recursive nameservers for verification.
 # Enabling this option could cause the DNS01 self check to take longer owing to caching performed by the recursive nameservers.
-dns01RecursiveNameserversOnly: false
+dns01RecursiveNameserversOnly: true
 
 # Option to disable cert-manager's build-in auto-approver. The auto-approver
 # approves all CertificateRequests that reference issuers matching the 'approveSignerNames'
@@ -354,7 +354,9 @@ approveSignerNames:
 # For example:
 #  extraArgs:
 #    - --controllers=*,-certificaterequests-approver
-extraArgs: []
+extraArgs:
+  - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+  - --dns01-recursive-nameservers-only
 
 # Extra containers to add to the pod spec in the deployment of the cert-manager controller.
 # For example, to deploy the [aws_signing_helper](https://github.com/aws/rolesanywhere-credential-helper) (replacing the ARNs as relevant):
@@ -1232,7 +1234,7 @@ cainjector:
   # Enables default network policies for cainjector.
   # This provides a way for you to restrict network traffic
   # between cert-manager components and other pods.
-  # For more information, see [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+  # For more information, see [Network Policies](https://keubernetes.io/docs/concepts/services-networking/network-policies/)
   # NOTE: an incorrect networkPolicy will cause traffic to be dropped
   networkPolicy:
     # Create network policies for the cainjector.
