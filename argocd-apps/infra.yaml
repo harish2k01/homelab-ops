@@ -4,6 +4,7 @@ metadata:
   name: infra
   namespace: argocd
 spec:
+  project: default
   source:
     repoURL: https://github.com/harish2k01/homelab-ops
     targetRevision: main
