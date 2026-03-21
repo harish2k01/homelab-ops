@@ -4,3 +4,7 @@ kind: Kustomization
 resources:
   - cert-manager/
   - argocd/
+  - grafana/
+  - longhorn/
+  - prometheus/
+  - alertmanager/
