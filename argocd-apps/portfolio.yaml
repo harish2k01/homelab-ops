@@ -1,23 +1,38 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
-  name: portfolio
+  name: portfolio-appset
   namespace: argocd
 spec:
-  project: default
-  source:
-    repoURL: https://github.com/harish2k01/homelab-ops.git
-    targetRevision: main
-    path: portfolio
-    helm:
-      valueFiles:
-        - values.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: personal
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+  generators:
+  - list:  # Define environments as a list
+      elements:
+      - env: dev
+        namespace: apps-dev
+        valuesFile: values-dev.yaml
+        targetRevision: main
+      - env: prod
+        namespace: apps-prod
+        valuesFile: values.yaml
+        targetRevision: main
+  template:
+    metadata:
+      name: 'portfolio-{{env}}'  # Dynamic name per env
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/harish2k01/homelab-ops.git
+        targetRevision: '{{targetRevision}}'
+        path: portfolio
+        helm:
+          valueFiles:
+            - '{{valuesFile}}'  # Use the generated values file
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
