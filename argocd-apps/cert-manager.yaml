@@ -10,7 +10,7 @@ spec:
     targetRevision: main
     path: cert-manager
     helm:
-      valuesFile:
+      valueFiles:
         - 'values.yaml'
   destination:
     server: https://kubernetes.default.svc
