@@ -1057,7 +1057,6 @@ alertmanager:
           resources:
             requests:
               storage: 5Gi
-          selector: {}
 
 
     ## The external URL the Alertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if Alertmanager is not served from root of a DNS name. string  false
@@ -4461,7 +4460,6 @@ prometheus:
           resources:
             requests:
               storage: 5Gi
-          selector: {}
 
     ## Using tmpfs volume
     ##
@@ -5310,7 +5308,6 @@ thanosRuler:
           resources:
             requests:
               storage: 5Gi
-          selector: {}
 
     ## AlertmanagerConfig define configuration for connecting to alertmanager.
     ## Only available with Thanos v0.10.0 and higher. Maps to the alertmanagers.config Thanos Ruler arg.
