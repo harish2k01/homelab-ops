@@ -1,0 +1,65 @@
+name: Update App Version
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+        description: "Name of the app"
+      image_tag:
+        required: true
+        type: string
+        description: "New image tag to update"
+
+env:
+  OPS_REPO: harish2k01/homelab-ops
+  CHART_PATH: charts/${{ inputs.app_name }}/Chart.yaml
+  VALUES_PATH: charts/${{ inputs.app_name }}/values.yaml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout homelab-ops
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.OPS_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: ops
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update image tag in values.yaml
+        run: |
+          cd ops
+          FILE="${{ env.VALUES_PATH }}"
+          NEW_TAG="${{ inputs.image_tag }}"
+          yq -i ".image.tag = \"$NEW_TAG\"" $FILE
+
+      - name: Update app version in chart
+        run: |
+          cd ops
+          CHART_FILE="${{ env.CHART_PATH }}"
+          NEW_VERSION="${{ inputs.image_tag }}"
+          yq -i ".appVersion = \"$NEW_VERSION\"" $CHART_FILE
+
+      - name: Commit and push changes
+        run: |
+          cd ops
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add .
+          git commit -m "chore(${{ inputs.app_name }}): update to version ${{ inputs.image_tag }}"
+          git push
