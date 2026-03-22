@@ -11,6 +11,16 @@ on:
         required: true
         type: string
         description: "New image tag to update"
+  workflow_dispatch:
+    inputs:
+      app_name:
+        required: true
+        type: string
+        description: "Name of the app"
+      image_tag:
+        required: true
+        type: string
+        description: "New image tag to update"
 
 env:
   OPS_REPO: harish2k01/homelab-ops
