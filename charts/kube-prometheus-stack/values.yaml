@@ -1272,6 +1272,7 @@ grafana:
 
   deploymentStrategy:
     type: Recreate
+    rollingUpdate: null
 
   ## ForceDeployDatasources Create datasource configmap even if grafana deployment has been disabled
   ##
