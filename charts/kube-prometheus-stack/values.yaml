@@ -1270,10 +1270,6 @@ grafana:
   enabled: true
   namespaceOverride: ""
 
-  deploymentStrategy:
-    type: Recreate
-    rollingUpdate: null
-
   ## ForceDeployDatasources Create datasource configmap even if grafana deployment has been disabled
   ##
   forceDeployDatasources: false
