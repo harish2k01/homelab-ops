@@ -1411,15 +1411,15 @@ grafana:
 
   # # To make Grafana persistent (Using Statefulset)
   # #
-    persistence:
-      enabled: true
-      type: sts
-      storageClassName: "longhorn-safe"
-      accessModes:
-        - ReadWriteOnce
-      size: 5Gi
-      finalizers:
-        - kubernetes.io/pvc-protection
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: "longhorn"
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    finalizers:
+      - kubernetes.io/pvc-protection
 
   serviceAccount:
     create: true
