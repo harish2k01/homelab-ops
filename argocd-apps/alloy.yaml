@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.6.2
+      helm:
+        valueFiles:
+          - $values/charts/alloy/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 3
