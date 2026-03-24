@@ -395,9 +395,9 @@ controller:
   ## Ideally, there should be no limits.
   ## https://engineering.indeedblog.com/blog/2019/12/cpu-throttling-regression-fix/
   resources:
-    ##  limits:
-    ##    cpu: 100m
-    ##    memory: 90Mi
+    limits:
+      cpu: 100m
+      memory: 90Mi
     requests:
       cpu: 100m
       memory: 90Mi
@@ -801,13 +801,13 @@ controller:
           drop:
             - ALL
         readOnlyRootFilesystem: true
-      resources: {}
-      # limits:
-      #   cpu: 10m
-      #   memory: 20Mi
-      # requests:
-      #   cpu: 10m
-      #   memory: 20Mi
+      resources:
+        limits:
+          cpu: 10m
+          memory: 20Mi
+        requests:
+          cpu: 10m
+          memory: 20Mi
       # -- Volume mounts for secret creation containers
       volumeMounts: []
       # - name: certs
@@ -1175,13 +1175,13 @@ defaultBackend:
   # -- Eviction policy for unhealthy pods guarded by PodDisruptionBudget.
   # Ref: https://kubernetes.io/blog/2023/01/06/unhealthy-pod-eviction-policy-for-pdbs/
   unhealthyPodEvictionPolicy: ""
-  resources: {}
-  # limits:
-  #   cpu: 10m
-  #   memory: 20Mi
-  # requests:
-  #   cpu: 10m
-  #   memory: 20Mi
+  resources:
+    limits:
+      cpu: 10m
+      memory: 20Mi
+    requests:
+      cpu: 10m
+      memory: 20Mi
 
   extraVolumeMounts: []
   ## Additional volumeMounts to the default backend container.
