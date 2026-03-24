@@ -2943,10 +2943,10 @@ repoServer:
   # -- Resource limits and requests for the repo server pods
   resources:
     limits:
-      cpu: 50m
+      cpu: 250m
       memory: 512Mi
     requests:
-      cpu: 10m
+      cpu: 100m
       memory: 256Mi
 
   # Repo server container ports
