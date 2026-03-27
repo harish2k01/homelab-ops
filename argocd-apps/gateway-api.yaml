@@ -15,7 +15,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: gateway-api
+    namespace: default
 
   syncPolicy:
     automated:
@@ -24,7 +24,6 @@ spec:
 
     syncOptions:
       - ServerSideApply=true
-      - CreateNamespace=true
 
   ignoreDifferences:
     - group: apiextensions.k8s.io
