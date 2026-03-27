@@ -4,6 +4,13 @@ metadata:
   name: infra
   namespace: argocd
 spec:
+  ignoreDifferences:
+    - group: cert-manager.io
+      kind: CertificateRequest
+    - group: acme.cert-manager.io
+      kind: Order
+    - group: acme.cert-manager.io
+      kind: Challenge
   project: default
   source:
     repoURL: https://github.com/harish2k01/homelab-ops
