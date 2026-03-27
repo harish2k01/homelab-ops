@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - cloudflare-api-secret.yaml
   - lets-encrypt-clusterissuer.yaml
+  - k8s-wildcard-cert.yaml

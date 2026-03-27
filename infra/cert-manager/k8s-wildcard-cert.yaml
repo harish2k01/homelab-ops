@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-k8s
+  namespace: traefik
+spec:
+  secretName: wildcard-k8s-tls
+  dnsNames:
+    - "*.k8s.harish2k01.xyz"
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
