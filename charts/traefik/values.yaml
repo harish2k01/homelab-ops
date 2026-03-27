@@ -148,7 +148,7 @@ experimental:
 
 gateway:
   # -- When providers.kubernetesGateway.enabled, deploy a default gateway
-  enabled: true
+  enabled: false
   # -- Set a custom name to gateway
   name: ""
   # -- By default, Gateway is created in the same `Namespace` as Traefik.
@@ -339,7 +339,7 @@ providers:
   # @schema additionalProperties: false
   kubernetesGateway:
     # -- Enable Traefik Gateway provider for Gateway API
-    enabled: false
+    enabled: true
     # -- Toggles support for the Experimental Channel resources (Gateway API release channels documentation).
     # This option currently enables support for TCPRoute and TLSRoute.
     experimentalChannel: false
@@ -1012,7 +1012,8 @@ service:
   single: true
   type: LoadBalancer
   # -- Additional annotations applied to both TCP and UDP services (e.g. for cloud provider specific config)
-  annotations: {}
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 10.10.10.252
   # -- Additional annotations for TCP service only
   annotationsTCP: {}
   # -- Additional annotations for UDP service only
@@ -1023,7 +1024,7 @@ service:
   # -- Cannot contain type, selector or ports entries.
   spec: {}
   # externalTrafficPolicy: Cluster
-  # loadBalancerIP: "1.2.3.4"
+  loadBalancerIP: "10.10.10.252"
   # clusterIP: "2.3.4.5"
   loadBalancerSourceRanges: []
   # - 192.168.0.1/32
