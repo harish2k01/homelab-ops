@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pve-exporter
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/harish2k01/homelab-ops.git
+    targetRevision: main
+    path: charts/pve-exporter
+    helm:
+      releaseName: pve-exporter
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3

@@ -1,0 +1,20 @@
+image:
+  repository: prompve/prometheus-pve-exporter
+  tag: "3.8.2"
+
+proxmox:
+  host: 10.10.10.100
+
+service:
+  port: 9221
+
+servicemonitor:
+  enabled: true
+  interval: 15s
+  labels:
+    release: kube-prometheus-stack
+
+sealedSecret:
+  enabled: true
+  encryptedData:
+    pveyaml: "AgCIE33xELqG4XHliEqchY3g48gAc+eglAQ51ipjlULJFZb9IgaKedN32KCkgEXe+yvolIPP08PnorSbqkI6M7xOsnsAo9TsJ2TTkaf1PLrx63Yg/c6n+rlRkkRD4zFVcRDB2a1rc6x1ZDbCZ1QWKAsCUr6mTsKn9IYdBDOZT3kgknIUUqXXYmNwBnaieA13fLRQ5HkkX0+lQKffIm8tc3wgryY8lwJHP4GJyle/wESlfAAn79s6SfOsYB8tudT9F6UkaOIDwsyQfejfVAIROYuR7IQOJcKeRkWjOyGTBJq8rqxVND5IvFPUN5GT2AMLU32Yy5KMGqBrzKpGpHn/LR9KuQx1/dH5R9Z6ZC7owFhowYWpQUObg4FBmL8Z2FovTgu141EJ14Fsju9CerDJJDfVTB9+nXpWswDXLgmiKhaxbkZZ1bkjlA2Obe5MIw2yW612EKILuum1k6YIM0V80+TU52e6Ibr4GcG3nvjLhLTbZzgXekAWINI7IqOzbSu9baeUW8jNNrh4hclfMXN0B3+l/txVlD4/F6u2ma5RXG/w1xoAVns3MWzt7MRRlYMOohmShMsq/0ZiJgMyn/yrUA4EkMLOjuj6065+sBXXqMs/iUpr589wOrlFKwgzFds84H8NdvpczUb6XR2iWMQCmxlqSEVeVB2qhSDvp465Facgn4FfvaZpJhPfiwBBmCYMKbUyHB2OttdrrYTYwCpuh2V0OgDDJ70zljJXdmvpaW+3BCwkUhTpUB+aPgKelzPnyHfOoDPKBdFIpE6CH8Kzq748PC/k1jGPkzSWmd4="

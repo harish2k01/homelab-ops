@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pve-exporter.fullname" . }}
+  labels:
+    {{- include "pve-exporter.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pve-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pve-exporter.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: exporter
+          image: "{{ .Values.image.repository }}:{{ required "image.tag must be set to an immutable image tag" .Values.image.tag }}"
+          ports:
+            - containerPort: 9221
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/pve.yaml
+              subPath: pve.yaml
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "pve-exporter.fullname" . }}

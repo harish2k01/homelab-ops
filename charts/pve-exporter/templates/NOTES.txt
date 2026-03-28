@@ -1,0 +1,58 @@
+PVE Exporter has been deployed successfully.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+--------------------------------------------------
+
+Verify deployment:
+kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+--------------------------------------------------
+
+Verify service:
+kubectl get svc -n {{ .Release.Namespace }} {{ include "pve-exporter.fullname" . }}
+
+Port-forward to test manually:
+kubectl port-forward svc/{{ include "pve-exporter.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+Then open:
+http://localhost:{{ .Values.service.port }}/pve?target={{ .Values.proxmox.host }}
+
+--------------------------------------------------
+
+Prometheus integration:
+Check Prometheus UI -> Targets
+
+Look for:
+- job: pve-exporter
+- state: UP
+
+Test query:
+pve_up
+
+Expected result:
+- 1 -> exporter working
+- 0 -> exporter reachable but Proxmox failing
+
+--------------------------------------------------
+
+Troubleshooting:
+1. Target not visible in Prometheus
+   Check ServiceMonitor label:
+   release: kube-prometheus-stack
+2. Target DOWN
+   Verify Proxmox IP: {{ .Values.proxmox.host }}
+   Check firewall and API access
+3. Auth issues
+   Inspect logs:
+   kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "pve-exporter.fullname" . }}
+4. Secret not created
+   Ensure Sealed Secrets controller is running
+
+--------------------------------------------------
+
+Security note:
+Using credentials via SealedSecret.
+Recommended improvement:
+Use Proxmox API token instead of root@pam password.

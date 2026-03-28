@@ -1,0 +1,31 @@
+{{- if .Values.servicemonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "pve-exporter.fullname" . }}
+  labels:
+    {{- toYaml .Values.servicemonitor.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "pve-exporter.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      interval: {{ .Values.servicemonitor.interval }}
+      path: /pve
+      params:
+        module: [default]
+        cluster: ['1']
+        node: ['1']
+      relabelings:
+        - sourceLabels: [__address__]
+          targetLabel: __param_target
+          replacement: {{ .Values.proxmox.host }}
+        - sourceLabels: [__param_target]
+          targetLabel: instance
+        - targetLabel: __address__
+          replacement: {{ include "pve-exporter.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+{{- end }}
