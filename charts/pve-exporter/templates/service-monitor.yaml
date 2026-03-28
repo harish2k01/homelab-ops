@@ -1,22 +1,23 @@
 {{- if .Values.servicemonitor.enabled }}
-{{- $targets := .Values.proxmox.targets | default (list .Values.proxmox.host) }}
+{{- $root := . }}
+{{- $targets := $root.Values.proxmox.targets }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "pve-exporter.fullname" . }}
+  name: {{ include "pve-exporter.fullname" $root }}
   labels:
-    {{- toYaml .Values.servicemonitor.labels | nindent 4 }}
+    {{- toYaml $root.Values.servicemonitor.labels | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "pve-exporter.selectorLabels" . | nindent 6 }}
+      {{- include "pve-exporter.selectorLabels" $root | nindent 6 }}
   namespaceSelector:
     matchNames:
-      - {{ .Release.Namespace }}
+      - {{ $root.Release.Namespace }}
   endpoints:
 {{- range $target := $targets }}
     - port: http
-      interval: {{ .Values.servicemonitor.interval }}
+      interval: {{ $root.Values.servicemonitor.interval }}
       path: /pve
       params:
         module: [default]
@@ -29,6 +30,6 @@ spec:
         - sourceLabels: [__param_target]
           targetLabel: instance
         - targetLabel: __address__
-          replacement: {{ include "pve-exporter.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+          replacement: {{ include "pve-exporter.fullname" $root }}.{{ $root.Release.Namespace }}.svc:{{ $root.Values.service.port }}
 {{- end }}
 {{- end }}

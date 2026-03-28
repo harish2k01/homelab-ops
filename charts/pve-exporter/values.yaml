@@ -3,10 +3,7 @@ image:
   tag: "3.8.2"
 
 proxmox:
-  # Legacy single-target value. Kept for backward compatibility.
-  host: 10.10.10.100
   # One or more Proxmox API endpoints to scrape.
-  # If set, this list is used instead of proxmox.host.
   targets:
     - 10.10.10.100
     - 10.10.10.150

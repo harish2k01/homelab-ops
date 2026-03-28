@@ -1,5 +1,5 @@
 PVE Exporter has been deployed successfully.
-{{- $targets := .Values.proxmox.targets | default (list .Values.proxmox.host) }}
+{{- $targets := .Values.proxmox.targets }}
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
