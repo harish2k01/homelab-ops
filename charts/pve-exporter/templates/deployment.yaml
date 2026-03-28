@@ -21,7 +21,7 @@ spec:
             - containerPort: 9221
           volumeMounts:
             - name: config
-              mountPath: /etc/prometheus/pve.yaml
+              mountPath: /etc/prometheus/pve.yml
               subPath: pve.yaml
       volumes:
         - name: config
