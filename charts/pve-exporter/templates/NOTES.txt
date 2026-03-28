@@ -1,4 +1,5 @@
 PVE Exporter has been deployed successfully.
+{{- $targets := .Values.proxmox.targets | default (list .Values.proxmox.host) }}
 
 Release: {{ .Release.Name }}
 Namespace: {{ .Release.Namespace }}
@@ -17,7 +18,7 @@ Port-forward to test manually:
 kubectl port-forward svc/{{ include "pve-exporter.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
 
 Then open:
-http://localhost:{{ .Values.service.port }}/pve?target={{ .Values.proxmox.host }}
+http://localhost:{{ .Values.service.port }}/pve?target={{ index $targets 0 }}
 
 --------------------------------------------------
 
@@ -42,7 +43,7 @@ Troubleshooting:
    Check ServiceMonitor label:
    release: kube-prometheus-stack
 2. Target DOWN
-   Verify Proxmox IP: {{ .Values.proxmox.host }}
+   Verify Proxmox IP: {{ index $targets 0 }}
    Check firewall and API access
 3. Auth issues
    Inspect logs:
