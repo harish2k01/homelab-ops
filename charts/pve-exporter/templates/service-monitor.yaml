@@ -1,10 +1,11 @@
 {{- if .Values.servicemonitor.enabled }}
 {{- $root := . }}
-{{- $targets := $root.Values.proxmox.targets }}
+{{- range $target := $root.Values.proxmox.targets }}
+---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "pve-exporter.fullname" $root }}
+  name: {{ include "pve-exporter.fullname" $root }}-{{ $target | replace "." "-" | replace ":" "-" }}
   labels:
     {{- toYaml $root.Values.servicemonitor.labels | nindent 4 }}
 spec:
@@ -15,7 +16,6 @@ spec:
     matchNames:
       - {{ $root.Release.Namespace }}
   endpoints:
-{{- range $target := $targets }}
     - port: http
       interval: {{ $root.Values.servicemonitor.interval }}
       path: /pve
