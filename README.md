@@ -1,188 +1,160 @@
 # Homelab-Ops
 
-This is a GitOps repository for managing my self-hosted Kubernetes cluster in my homelab. Built with ArgoCD, Helm, and Kustomize, it demonstrates modern Infrastructure as Code (IaC) practices, declarative deployments, and DevOps automation for home infrastructure.
+GitOps repository for my self-hosted Kubernetes homelab.
 
-## 🚀 Features
+This repo uses Argo CD to continuously reconcile infrastructure and application manifests from Git into the cluster. It combines upstream Helm charts, custom Helm charts, and Kustomize-managed infrastructure so the cluster state stays declarative and repeatable.
 
-- **GitOps Workflow** - Infrastructure and applications defined as code in Git, automatically synced to Kubernetes via ArgoCD
-- **Helm Charts** - Templated deployments for applications and infrastructure (ArgoCD, cert-manager, ingress-nginx, portfolio)
-- **Kustomize** - Infrastructure components with environment-specific customization
-- **Multi-Environment Support** - Separate dev and prod deployments of the portfolio application
-- **Observability Stack** - Prometheus, Grafana, and Alertmanager for comprehensive monitoring
-- **Security** - Sealed Secrets for managing sensitive data, cert-manager for SSL/TLS automation
-- **Storage** - Longhorn for persistent volume management
-- **Ingress Management** - ingress-nginx with custom routing and HTTP routes
+## Overview
 
-## 🏗️ Architecture
+The cluster is managed with a GitOps workflow:
 
-```
-Kubernetes Cluster
-├── ArgoCD (Deployment Controller)
-├── Cert-Manager (SSL/TLS)
-├── Ingress-Nginx (Ingress Controller)
-├── Portfolio (Dev & Prod)
-├── Observability Stack (Prometheus, Grafana, Alertmanager)
-├── Longhorn (Storage)
-└── Sealed Secrets (Secret Management)
-```
+1. Infrastructure and app configuration live in this repository.
+2. Argo CD watches the repo and syncs changes automatically.
+3. Helm is used for packaged apps and custom workloads.
+4. Kustomize is used for cluster-level infrastructure resources.
 
-## 📁 Project Structure
+## Current Stack
 
-```
-argocd-apps/         - ArgoCD Application definitions (deployment targets)
-├── argocd.yaml
-├── cert-manager.yaml
-├── infra.yaml
-├── ingress-nginx.yaml
-├── portfolio-dev.yaml
-├── portfolio-prod.yaml
-└── sealed-secrets.yaml
+Core platform:
 
-charts/              - Helm charts for applications and infrastructure
-├── argocd/          - ArgoCD Helm chart configuration
-├── cert-manager/    - Cert-manager Helm chart configuration
-├── ingress-nginx/   - Ingress-nginx Helm chart configuration
-├── portfolio-dev/   - Portfolio application (dev environment)
-├── portfolio-prod/  - Portfolio application (prod environment)
-└── sealed-secrets/  - Sealed Secrets Helm chart configuration
+- Argo CD
+- cert-manager
+- Sealed Secrets
+- MetalLB
+- Longhorn
 
-infra/               - Kustomize-based infrastructure components
-├── kustomization.yaml
-├── alertmanager/    - Alert management infrastructure
-├── argocd/          - ArgoCD infrastructure setup
-├── cert-manager/    - Certificate management & Let's Encrypt integration
-├── grafana/         - Grafana dashboards and ingress
-├── longhorn/        - Persistent storage configuration
-└── prometheus/      - Prometheus monitoring and ingress
+Networking and ingress:
+
+- ingress-nginx
+- Traefik
+- Gateway API resources
+
+Observability:
+
+- kube-prometheus-stack
+- Grafana
+- Loki
+- Alloy
+- pve-exporter for Proxmox metrics
+
+Applications:
+
+- `portfolio-dev`
+- `portfolio-prod`
+
+## Repository Layout
+
+```text
+.
+|-- argocd-apps/     # Argo CD Application manifests
+|-- charts/          # Helm values and custom Helm charts
+|-- infra/           # Kustomize-managed infrastructure resources
+`-- README.md
 ```
 
-## 🛠️ Workflow
+### `argocd-apps/`
 
-### GitOps Process
-1. **Define** - Infrastructure and applications are defined as code in YAML (Helm charts and Kustomize)
-2. **Commit** - Changes are committed to this Git repository
-3. **Sync** - ArgoCD automatically detects changes and syncs them to the Kubernetes cluster
-4. **Monitor** - Prometheus and Grafana provide visibility into cluster health and performance
+Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 
-### Adding New Applications
-1. Create a Helm chart in `charts/`
-2. Define values in `charts/<app>/values.yaml`
-3. Create an ArgoCD Application in `argocd-apps/<app>.yaml`
-4. Commit and push - ArgoCD automatically deploys
+- `argocd`
+- `cert-manager`
+- `gateway-api`
+- `ingress-nginx`
+- `traefik`
+- `kube-prometheus-stack`
+- `loki`
+- `alloy`
+- `longhorn`
+- `sealed-secrets`
+- `pve-exporter`
+- `portfolio-dev`
+- `portfolio-prod`
+- `infra`
 
-### Modifying Infrastructure
-1. Edit Kustomize configurations in `infra/`
-2. Update `infra/kustomization.yaml` if adding new components
-3. Commit and push - ArgoCD applies the changes
+### `charts/`
 
-## 🚀 Getting Started
+Contains two kinds of content:
+
+- Values files for upstream Helm charts such as Argo CD, Traefik, Longhorn, Loki, and kube-prometheus-stack
+- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, and `pve-exporter`
+
+### `infra/`
+
+Kustomize-managed cluster resources and supporting manifests, including:
+
+- Argo CD ingress
+- cert-manager issuers and certificates
+- Grafana, Prometheus, and Alertmanager ingress resources
+- Longhorn ingress and storage-class configuration
+- MetalLB configuration
+- Traefik Gateway API resources
+
+## How Deployments Work
+
+Most third-party apps are deployed with multi-source Argo CD applications:
+
+- Source 1: upstream Helm chart repository
+- Source 2: this repository for the matching `values.yaml`
+
+Custom apps such as `portfolio-*` and `pve-exporter` are deployed directly from local charts in [`charts/`](https://github.com/harish2k01/homelab-ops/tree/main/charts).
+
+Infrastructure resources under [`infra/`](https://github.com/harish2k01/homelab-ops/tree/main/infra) are applied through the `infra` Argo CD application using Kustomize.
+
+## Getting Started
 
 ### Prerequisites
-- Self-hosted Kubernetes cluster (v1.20+) - running on homelab hardware (bare metal, VMs, etc.)
-- `kubectl` configured to access your cluster
-- `helm` (v3+)
-- `kustomize` (optional, for local testing)
-- DNS configured to route to your homelab cluster
 
-### Initial Setup
+- A working Kubernetes cluster
+- `kubectl`
+- `helm`
+- `kustomize` for local rendering and validation
+- Access to the cluster with enough permissions to install controllers and CRDs
+
+### Bootstrap
+
+Clone the repo:
+
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd homelab-ops
+```
 
-# Apply infrastructure components to bootstrap the cluster
-kubectl apply -k infra/
+Apply the Argo CD app definitions after Argo CD itself is available in the cluster:
 
-# Create ArgoCD applications to begin GitOps sync
+```bash
 kubectl apply -f argocd-apps/
 ```
 
-### Verify Deployment
+If you want to inspect the raw infrastructure manifests locally:
+
 ```bash
-# Check ArgoCD applications
-kubectl get applications -n argocd
-
-# Monitor sync status
-kubectl get applications -n argocd -o wide
-
-# Access ArgoCD dashboard
-kubectl port-forward -n argocd svc/argocd-server 8080:443
-# Visit https://localhost:8080
-```
-
-### Access Services
-All services are accessible via ingress endpoints configured in your homelab DNS:
-
-- **ArgoCD** - GitOps deployment management
-- **Grafana** - Monitoring dashboards
-- **Prometheus** - Metrics and alerting
-- **Alertmanager** - Alert notifications
-- **Longhorn** - Storage dashboard
-- **Portfolio** - Personal portfolio application (dev and prod)
-
-Configure DNS and firewall rules to point to your cluster's ingress controller IP.
-
-## 📋 Key Components
-
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **ArgoCD** | GitOps deployment controller | `infra/argocd/`, `charts/argocd/` |
-| **Cert-Manager** | Automatic SSL/TLS certificate management | `infra/cert-manager/`, `charts/cert-manager/` |
-| **Ingress-Nginx** | HTTP/HTTPS ingress controller | `infra/` (ingress routing) |
-| **Portfolio (Dev/Prod)** | Personal portfolio application | `charts/portfolio-dev/`, `charts/portfolio-prod/` |
-| **Prometheus** | Metrics collection and alerting | `infra/prometheus/` |
-| **Grafana** | Metrics visualization and dashboards | `infra/grafana/` |
-| **Alertmanager** | Alert routing and notifications | `infra/alertmanager/` |
-| **Longhorn** | Persistent volume management | `infra/longhorn/` |
-| **Sealed Secrets** | Encrypted secret management | `charts/sealed-secrets/` |
-
-## 🔐 Secret Management
-
-Sensitive data (API keys, credentials) is managed using Sealed Secrets:
-1. Secrets are encrypted using a cluster-specific key
-2. Encrypted secrets are committed to Git safely
-3. ArgoCD decrypts and applies them at deploy time
-
-## 📊 Monitoring & Observability
-
-- **Prometheus** collects metrics from all cluster components
-- **Grafana** visualizes metrics with custom dashboards
-- **Alertmanager** handles alert routing and notifications
-- Access monitoring dashboards via their ingress endpoints
-
-## 🔄 CI/CD Integration
-
-This repository is designed to work with external CI/CD systems:
-- Webhooks can trigger ArgoCD syncs on Git push
-- Changes are immediately reflected in the cluster
-- No separate deployment steps required
-
-## 📝 Development & Customization
-
-### Adding a New Service
-1. Create Helm chart: `mkdir -p charts/my-service/templates`
-2. Define `Chart.yaml` and `values.yaml`
-3. Add ArgoCD application file: `argocd-apps/my-service.yaml`
-4. Commit and push
-
-### Customizing Infrastructure
-1. Edit configurations in `infra/`
-2. Use Kustomize for environment-specific overrides
-3. Commit and push
-
-### Testing Locally
-```bash
-# Validate Helm charts
-helm template charts/my-service/
-
-# Validate Kustomize
 kustomize build infra/
 ```
 
-## 📧 Contact
+If you want to render a chart locally:
 
-This project is maintained by **Harish T.**
+```bash
+helm template charts/portfolio-prod
+helm template charts/pve-exporter
+```
 
----
+## Notable Details
 
-**Note:** This repository is for managing my self-hosted homelab Kubernetes cluster and is part of my learning and skill demonstration project. Sensitive credentials are managed using Sealed Secrets and are never committed to Git.
+- `portfolio-dev` and `portfolio-prod` currently expose Kubernetes `Ingress` resources with the `nginx` ingress class.
+- Gateway API resources are also present in the repo for Traefik-based routing.
+- TLS is managed with cert-manager.
+- Sensitive data is intended to be stored as Sealed Secrets instead of plain Kubernetes Secrets.
+- MetalLB provides service IPs for LoadBalancer workloads in the homelab network.
+
+## Secret Management
+
+Secrets should be committed in encrypted form using Sealed Secrets:
+
+1. Create a regular Kubernetes Secret manifest.
+2. Seal it with the cluster's Sealed Secrets public certificate.
+3. Commit the sealed manifest to Git.
+4. Let Argo CD sync it into the cluster.
+
+## Why This Repo Exists
+
+This repository serves both as the operational source of truth for my homelab and as a practical DevOps portfolio project. It reflects how I manage cluster infrastructure, monitoring, ingress, storage, and application delivery in a reproducible way.
