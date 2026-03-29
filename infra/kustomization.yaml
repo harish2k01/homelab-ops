@@ -10,4 +10,3 @@ resources:
   - alertmanager/
   - metallb/
   - traefik/
-  - headlamp/
