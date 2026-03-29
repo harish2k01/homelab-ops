@@ -13,6 +13,7 @@ spec:
       chart: ingress-nginx
       targetRevision: 4.15.1
       helm:
+        releaseName: ingress-nginx
         valueFiles:
           - $values/charts/ingress-nginx/values.yaml
 
