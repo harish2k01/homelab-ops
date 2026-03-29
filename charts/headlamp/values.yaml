@@ -33,7 +33,7 @@ extraContainers: []
 
 config:
   inCluster: true
-  inClusterContextName: "main"
+  inClusterContextName: "pve"
   # -- base url path at which headlamp should run
   baseURL: ""
   # -- session token TTL in seconds (default is 24 hours)
@@ -52,7 +52,7 @@ config:
     #       name: oidc
     secret:
       # -- Generate OIDC secret. If true, will generate a secret using .config.oidc.
-      create: true
+      create: false
       # -- Name of the OIDC secret.
       name: oidc
 
@@ -85,7 +85,7 @@ config:
     # -- Use 'access_token' instead of 'id_token' when authenticating using OIDC
     useAccessToken: false
     # -- Use PKCE (Proof Key for Code Exchange) for enhanced security in OIDC flow
-    usePKCE: false
+    usePKCE: true
     # -- Enable using OIDC cookie for authentication outside of cluster
     useCookie: false
 
@@ -102,8 +102,8 @@ config:
     #       enabled: true
     #       name: oidc
     externalSecret:
-      enabled: false
-      name: ""
+      enabled: true
+      name: "headlamp-oidc"
 
     # -- URL to fetch additional user info for the /me endpoint.
     # For oauth2proxy /oauth2/userinfo can be used. Empty and it will not be used.
