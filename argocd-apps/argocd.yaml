@@ -13,6 +13,7 @@ spec:
       chart: argo-cd
       targetRevision: 9.4.15
       helm:
+        releaseName: argocd
         valueFiles:
           - $values/charts/argocd/values.yaml
 

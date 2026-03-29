@@ -13,6 +13,7 @@ spec:
       targetRevision: 9.2.0
       path: .
       helm:
+        releaseName: loki
         valueFiles:
           - $values/charts/loki/values.yaml
 

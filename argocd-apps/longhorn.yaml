@@ -13,6 +13,7 @@ spec:
       chart: longhorn
       targetRevision: 1.11.1
       helm:
+        releaseName: longhorn
         valueFiles:
           - $values/charts/longhorn/values.yaml
 

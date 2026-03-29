@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sealed-secrets
+  name: metallb
   namespace: argocd
 
 spec:
@@ -9,13 +9,13 @@ spec:
 
   sources:
     # 🔹 Upstream Helm chart
-    - repoURL: https://bitnami-labs.github.io/sealed-secrets
-      chart: sealed-secrets
-      targetRevision: 2.18.4
+    - repoURL: https://metallb.github.io/metallb
+      chart: metallb
+      targetRevision: 0.15.3
       helm:
-        releaseName: sealed-secrets
+        releaseName: metallb
         valueFiles:
-          - $values/charts/sealed-secrets/values.yaml
+          - $values/charts/metallb/values.yaml
 
     # 🔹 Your Git repo (values source)
     - repoURL: https://github.com/harish2k01/homelab-ops
@@ -24,7 +24,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: metallb-system
 
   syncPolicy:
     automated:

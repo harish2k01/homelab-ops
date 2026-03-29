@@ -13,6 +13,7 @@ spec:
       chart: kube-prometheus-stack
       targetRevision: 82.13.1
       helm:
+        releaseName: kube-prometheus-stack
         valueFiles:
           - $values/charts/kube-prometheus-stack/values.yaml
 
