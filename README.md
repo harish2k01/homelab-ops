@@ -1,10 +1,10 @@
-# Homelab-Ops
+# 🏠 Homelab-Ops
 
 GitOps repository for my self-hosted Kubernetes homelab.
 
 This repo uses Argo CD to continuously reconcile infrastructure and application manifests from Git into the cluster. It combines upstream Helm charts, custom Helm charts, and Kustomize-managed infrastructure so the cluster state stays declarative and repeatable.
 
-## Overview
+## 📋 Overview
 
 The cluster is managed with a GitOps workflow:
 
@@ -13,9 +13,9 @@ The cluster is managed with a GitOps workflow:
 3. Helm is used for packaged apps and custom workloads.
 4. Kustomize is used for cluster-level infrastructure resources.
 
-## Current Stack
+## 🛠️ Current Stack
 
-Core platform:
+### 🎯 Core platform:
 
 - Argo CD
 - cert-manager
@@ -23,13 +23,13 @@ Core platform:
 - MetalLB
 - Longhorn
 
-Networking and ingress:
+### 🌐 Networking and ingress:
 
 - ingress-nginx
 - Traefik
 - Gateway API resources
 
-Observability:
+### 📊 Observability:
 
 - kube-prometheus-stack
 - Grafana
@@ -37,12 +37,12 @@ Observability:
 - Alloy
 - pve-exporter for Proxmox metrics
 
-Applications:
+### 📱 Applications:
 
 - `portfolio-dev`
 - `portfolio-prod`
 
-## Repository Layout
+## 📂 Repository Layout
 
 ```text
 .
@@ -89,7 +89,7 @@ Kustomize-managed cluster resources and supporting manifests, including:
 - MetalLB configuration
 - Traefik Gateway API resources
 
-## How Deployments Work
+## 🚀 How Deployments Work
 
 Most third-party apps are deployed with multi-source Argo CD applications:
 
@@ -100,9 +100,9 @@ Custom apps such as `portfolio-*` and `pve-exporter` are deployed directly from 
 
 Infrastructure resources under [`infra/`](https://github.com/harish2k01/homelab-ops/tree/main/infra) are applied through the `infra` Argo CD application using Kustomize.
 
-## Getting Started
+## ⚡ Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 - A working Kubernetes cluster
 - `kubectl`
@@ -110,7 +110,7 @@ Infrastructure resources under [`infra/`](https://github.com/harish2k01/homelab-
 - `kustomize` for local rendering and validation
 - Access to the cluster with enough permissions to install controllers and CRDs
 
-### Bootstrap
+### 🔧 Bootstrap
 
 Clone the repo:
 
@@ -138,7 +138,7 @@ helm template charts/portfolio-prod
 helm template charts/pve-exporter
 ```
 
-## Notable Details
+## 💡 Notable Details
 
 - `portfolio-dev` and `portfolio-prod` currently expose Kubernetes `Ingress` resources with the `nginx` ingress class.
 - Gateway API resources are also present in the repo for Traefik-based routing.
@@ -146,7 +146,7 @@ helm template charts/pve-exporter
 - Sensitive data is intended to be stored as Sealed Secrets instead of plain Kubernetes Secrets.
 - MetalLB provides service IPs for LoadBalancer workloads in the homelab network.
 
-## Secret Management
+## 🔐 Secret Management
 
 Secrets should be committed in encrypted form using Sealed Secrets:
 
@@ -155,6 +155,6 @@ Secrets should be committed in encrypted form using Sealed Secrets:
 3. Commit the sealed manifest to Git.
 4. Let Argo CD sync it into the cluster.
 
-## Why This Repo Exists
+## ✨ Why This Repo Exists
 
 This repository serves both as the operational source of truth for my homelab and as a practical DevOps portfolio project. It reflects how I manage cluster infrastructure, monitoring, ingress, storage, and application delivery in a reproducible way.
