@@ -17,6 +17,13 @@ spec:
         - path:
             type: PathPrefix
             value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: headlamp-forwarded-headers
+            namespace: headlamp
       backendRefs:
         - name: headlamp
           port: 80

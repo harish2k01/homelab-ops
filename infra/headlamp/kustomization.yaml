@@ -5,3 +5,4 @@ resources:
   - headlamp-traefik-route.yaml
   - headlamp-oidc-secret.yaml
   - headlamp-cluster-role-binding.yaml
+  - headlamp-middleware.yaml
