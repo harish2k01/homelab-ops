@@ -69,6 +69,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `pve-exporter`
 - `portfolio-dev`
 - `portfolio-prod`
+- `metallb`
 - `infra`
 
 ### `charts/`
