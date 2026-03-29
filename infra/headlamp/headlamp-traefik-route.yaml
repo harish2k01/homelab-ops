@@ -22,7 +22,7 @@ spec:
           extensionRef:
             group: traefik.io
             kind: Middleware
-            name: hedlamp-forwarded-headers
+            name: headlamp-forwarded-headers
             namespace: headlamp
       backendRefs:
         - name: headlamp
