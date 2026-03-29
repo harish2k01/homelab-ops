@@ -87,7 +87,7 @@ config:
     # -- Use PKCE (Proof Key for Code Exchange) for enhanced security in OIDC flow
     usePKCE: false
     # -- Enable using OIDC cookie for authentication outside of cluster
-    useCookie: false
+    useCookie: true
 
     # Option 3:
     # @param config.oidc - External OIDC secret configuration
