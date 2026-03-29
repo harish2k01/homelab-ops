@@ -116,7 +116,7 @@ podDisruptionBudget:  # @schema additionalProperties: false
 
 ingressClass:  # @schema additionalProperties: false
   # -- Create a default IngressClass for Traefik
-  enabled: true
+  enabled: false
   isDefaultClass: true
   name: ""
 
