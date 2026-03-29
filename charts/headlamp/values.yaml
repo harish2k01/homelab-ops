@@ -74,9 +74,9 @@ config:
     # -- OIDC issuer URL
     issuerURL: ""
     # -- OIDC scopes to be used
-    scopes: ""
+    scopes: "openid,email,profile"
     # -- OIDC callback URL
-    callbackURL: ""
+    callbackURL: "https://headlamp.k8s.harish2k01.xyz/oidc-callback"
 
     # -- OIDC client to be used during token validation
     validatorClientID: ""
