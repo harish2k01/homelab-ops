@@ -83,7 +83,7 @@ config:
     # -- OIDC Issuer URL to be used during token validation
     validatorIssuerURL: ""
     # -- Use 'access_token' instead of 'id_token' when authenticating using OIDC
-    useAccessToken: false
+    useAccessToken: true
     # -- Use PKCE (Proof Key for Code Exchange) for enhanced security in OIDC flow
     usePKCE: false
     # -- Enable using OIDC cookie for authentication outside of cluster
