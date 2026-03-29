@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - headlamp-traefik-route.yaml
+  - headlamp-service-account.yaml
