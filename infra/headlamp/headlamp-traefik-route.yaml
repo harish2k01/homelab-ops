@@ -1,15 +1,16 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: traefik-dashboard
-  namespace: traefik
+  name: headlamp
+  namespace: headlamp
 spec:
   parentRefs:
     - name: traefik-gateway
+      namespace: traefik
       sectionName: websecure
 
   hostnames:
-    - traefik.k8s.harish2k01.xyz
+    - headlamp.k8s.harish2k01.xyz
 
   rules:
     - matches:
@@ -17,5 +18,5 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: api@internal
-          kind: TraefikService
+        - name: headlamp
+          port: 80
