@@ -52,7 +52,7 @@ config:
     #       name: oidc
     secret:
       # -- Generate OIDC secret. If true, will generate a secret using .config.oidc.
-      create: false
+      create: true
       # -- Name of the OIDC secret.
       name: oidc
 
@@ -102,8 +102,8 @@ config:
     #       enabled: true
     #       name: oidc
     externalSecret:
-      enabled: true
-      name: "headlamp-oidc"
+      enabled: false
+      name: ""
 
     # -- URL to fetch additional user info for the /me endpoint.
     # For oauth2proxy /oauth2/userinfo can be used. Empty and it will not be used.
