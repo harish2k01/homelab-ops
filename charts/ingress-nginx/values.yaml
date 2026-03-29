@@ -132,7 +132,7 @@ controller:
     # -- If true, Ingresses without `ingressClassName` get assigned to this IngressClass on creation.
     # Ingress creation gets rejected if there are multiple default IngressClasses.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#default-ingress-class
-    default: false
+    default: true
     # -- Annotations to be added to the IngressClass resource.
     annotations: {}
     # -- Controller of the IngressClass. An Ingress Controller looks for IngressClasses it should reconcile by this value.
