@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - traefik-gateway.yaml
   - traefik-route-dashboard.yaml
+  - traefik-gateway-class.yaml
