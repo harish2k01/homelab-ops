@@ -1,6 +1,6 @@
 ## githubConfigUrl is the GitHub url for where you want to configure runners
 ## ex: https://github.com/myorg/myrepo or https://github.com/myorg or https://github.com/enterprises/myenterprise
-githubConfigUrl: "https://github.com/harish2k01/homelab-ops"
+githubConfigUrl: "https://github.com/harish2k01"
 
 scaleSetLabels: []
 
@@ -67,7 +67,7 @@ githubConfigSecret: arc-github-app
 # runnerGroup: "default"
 
 ## name of the runner scale set to create.  Defaults to the helm release name
-# runnerScaleSetName: ""
+runnerScaleSetName: "homelab-ops-runners"
 
 ## A self-signed CA certificate for communication with the GitHub server can be
 ## provided using a config map key selector. If `runnerMountPath` is set, for
