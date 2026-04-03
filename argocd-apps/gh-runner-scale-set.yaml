@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: gh-runner-scale-set-controller
+  name: gh-runner-scale-set
   namespace: argocd
 
 spec:
