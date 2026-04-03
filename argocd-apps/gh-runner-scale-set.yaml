@@ -24,7 +24,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: arc-runners
+    namespace: arc-systems
 
   syncPolicy:
     automated:
