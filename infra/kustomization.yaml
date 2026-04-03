@@ -11,3 +11,4 @@ resources:
   - metallb/
   - traefik/
   - headlamp/
+  - actions-runner-controller/
