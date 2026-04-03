@@ -1,9 +1,0 @@
-name: ARC Test
-
-on: [push]
-
-jobs:
-  test:
-    runs-on: arc-runner-set
-    steps:
-      - run: echo "Runner is working"

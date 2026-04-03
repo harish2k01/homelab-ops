@@ -1,6 +1,6 @@
 ## githubConfigUrl is the GitHub url for where you want to configure runners
 ## ex: https://github.com/myorg/myrepo or https://github.com/myorg or https://github.com/enterprises/myenterprise
-githubConfigUrl: "https://github.com/harish2k01"
+githubConfigUrl: "https://github.com/harish2k01/Portfolio"
 
 scaleSetLabels: []
 
