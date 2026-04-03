@@ -116,8 +116,8 @@ runnerScaleSetName: "portfolio-runner"
 ##
 ## If any customization is required for dind or kubernetes mode, containerMode should remain
 ## empty, and configuration should be applied to the template.
-# containerMode:
-#   type: "dind"  ## type can be set to "dind", "kubernetes", or "kubernetes-novolume"
+containerMode:
+  type: "dind"  ## type can be set to "dind", "kubernetes", or "kubernetes-novolume"
 #   ## the following is required when containerMode.type=kubernetes
 #   kubernetesModeWorkVolumeClaim:
 #     accessModes: ["ReadWriteOnce"]
