@@ -11,16 +11,11 @@ on:
         required: true
         type: string
         description: "New image tag to update"
-  workflow_dispatch:
-    inputs:
-      app_name:
+    secrets:
+      GH_APP_ID:
         required: true
-        type: string
-        description: "Name of the app"
-      image_tag:
+      GH_APP_PRIVATE_KEY:
         required: true
-        type: string
-        description: "New image tag to update"
 
 env:
   OPS_REPO: harish2k01/homelab-ops
@@ -35,11 +30,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: harish2k01
+          repositories: homelab-ops
+
+      - name: Get GitHub App user info
+        id: app-user
+        run: |
+          login="${{ steps.app-token.outputs.app-slug }}[bot]"
+          echo "login=$login" >> "$GITHUB_OUTPUT"
+          echo "email=$login@users.noreply.github.com" >> "$GITHUB_OUTPUT"
+
       - name: Checkout homelab-ops
         uses: actions/checkout@v4
         with:
           repository: ${{ env.OPS_REPO }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: ops
 
       - name: Install yq
@@ -52,20 +63,20 @@ jobs:
           cd ops
           FILE="${{ env.VALUES_PATH }}"
           NEW_TAG="${{ inputs.image_tag }}"
-          yq -i ".image.tag = \"$NEW_TAG\"" $FILE
+          yq -i ".image.tag = \"$NEW_TAG\"" "$FILE"
 
       - name: Update app version in chart
         run: |
           cd ops
           CHART_FILE="${{ env.CHART_PATH }}"
           NEW_VERSION="${{ inputs.image_tag }}"
-          yq -i ".appVersion = \"$NEW_VERSION\"" $CHART_FILE
+          yq -i ".appVersion = \"$NEW_VERSION\"" "$CHART_FILE"
 
       - name: Commit and push changes
         run: |
           cd ops
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "${{ steps.app-user.outputs.login }}"
+          git config user.email "${{ steps.app-user.outputs.email }}"
           if git diff --quiet; then
             echo "No changes to commit"
             exit 0
