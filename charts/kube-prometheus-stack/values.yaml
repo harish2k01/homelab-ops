@@ -4349,7 +4349,7 @@ prometheus:
 
     ## How long to retain metrics
     ##
-    retention: 10d
+    retention: 7d
 
     ## Maximum size of metrics
     ## Unit format should be in the form of "50GiB"
