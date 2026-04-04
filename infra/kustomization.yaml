@@ -12,3 +12,4 @@ resources:
   - traefik/
   - headlamp/
   - actions-runner-controller/
+  - cloudflared/
