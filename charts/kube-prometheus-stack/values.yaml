@@ -4353,7 +4353,7 @@ prometheus:
 
     ## Maximum size of metrics
     ## Unit format should be in the form of "50GiB"
-    retentionSize: ""
+    retentionSize: "4GiB"
 
     ## Allow out-of-order/out-of-bounds samples ingested into Prometheus for a specified duration
     ## See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tsdb
