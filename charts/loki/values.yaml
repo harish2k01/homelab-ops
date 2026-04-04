@@ -471,6 +471,7 @@ loki:
     trafficDistribution: ""
   # -- Limits config
   limits_config:
+    retention_period: 168h  # 7 days
     allow_structured_metadata: true
     reject_old_samples: true
     reject_old_samples_max_age: 168h
@@ -700,7 +701,7 @@ loki:
 
 # -- Section for configuring optional Helm test
 test:
-  enabled: true
+  enabled: false
   # -- Used to directly query the metrics endpoint of the canary for testing, this approach avoids needing prometheus for testing.
   # This in a newer approach to using prometheusAddress such that tests do not have a dependency on prometheus
   canaryServiceAddress: 'http://{{ include "loki-canary.fullname" $ }}.{{ include "loki.namespace" $ }}.svc.{{ .Values.global.clusterDomain }}:3500/metrics'
@@ -730,7 +731,7 @@ test:
 # The Loki canary pushes logs to and queries from this loki installation to test
 # that it's working correctly
 lokiCanary:
-  enabled: true
+  enabled: false
   # -- The type of the loki canary k8s rollout. This can be a DaemonSet or Deployment.
   kind: DaemonSet
   # -- If true, the canary will send directly to Loki via the address configured for verification --
