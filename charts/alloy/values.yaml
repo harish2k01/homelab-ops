@@ -67,6 +67,12 @@ alloy:
           target_label = "pod"
           action = "replace"
         }
+
+        rule {
+          source_labels = ["namespace"]
+          regex = "kube-system|monitoring"
+          action = "drop"
+        }
       }
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pods.output
@@ -94,7 +100,7 @@ alloy:
       }
       loki.write "loki" {
         endpoint {
-          url = "http://loki-gateway/loki/api/v1/push"
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
         }
       }
 
@@ -145,7 +151,7 @@ alloy:
 
   # -- Enables sending Grafana Labs anonymous usage stats to help improve Grafana
   # Alloy.
-  enableReporting: true
+  enableReporting: false
 
   # -- Extra environment variables to pass to the Alloy container.
   extraEnv: []
