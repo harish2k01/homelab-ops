@@ -668,7 +668,8 @@ prometheus:
     scrapeTimeout: 30s
 
     # Additional labels to add to the ServiceMonitor.
-    labels: {}
+    labels:
+      release: kube-prometheus-stack
 
     # Additional annotations to add to the ServiceMonitor.
     annotations: {}
