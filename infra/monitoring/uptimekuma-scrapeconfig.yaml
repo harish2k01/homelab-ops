@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: uptime-kuma-scrape-config
+  namespace: monitoring
+spec:
+  scrapeInterval: 30s
+  scheme: http
+  metricsPath: /metrics
+  staticConfigs:
+    - labels:
+        app: uptime-kuma
+        job: uptime-kuma
+      targets:
+        - 10.10.10.105:3001
+  # If Uptime Kuma auth is enabled for metrics, create a Secret in the
+  # monitoring namespace and store the API key as the password.
+  basicAuth:
+    password:
+      name: uptimekuma-api-key-secret
+      key: api-key
