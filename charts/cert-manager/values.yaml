@@ -641,7 +641,7 @@ prometheus:
 
   servicemonitor:
     # Create a ServiceMonitor to add cert-manager to Prometheus.
-    enabled: false
+    enabled: true
 
     # The namespace that the service monitor should live in, defaults
     # to the cert-manager namespace.
@@ -668,7 +668,8 @@ prometheus:
     scrapeTimeout: 30s
 
     # Additional labels to add to the ServiceMonitor.
-    labels: {}
+    labels:
+      release: kube-prometheus-stack
 
     # Additional annotations to add to the ServiceMonitor.
     annotations: {}
