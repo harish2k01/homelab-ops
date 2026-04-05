@@ -1036,7 +1036,7 @@ controller:
       portName: http-metrics
     serviceMonitor:
       # -- Enable a prometheus ServiceMonitor
-      enabled: false
+      enabled: true
       # -- Prometheus ServiceMonitor interval
       interval: 30s
       # -- When true, honorLabels preserves the metric’s labels when they collide with the target’s labels.
