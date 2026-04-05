@@ -11,6 +11,7 @@ spec:
     - labels:
         app: uptime-kuma
         job: uptime-kuma
+        release: kube-prometheus-stack
       targets:
         - 10.10.10.105:3001
   # If Uptime Kuma auth is enabled for metrics, create a Secret in the
