@@ -1,0 +1,8 @@
+1. Get the exporter service:
+   kubectl get svc {{ include "qbittorrent-exporter.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Check the metrics endpoint:
+   kubectl port-forward svc/{{ include "qbittorrent-exporter.fullname" . }} 8090:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+3. Visit:
+   http://127.0.0.1:8090/metrics

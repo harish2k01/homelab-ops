@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/martabal/qbittorrent-exporter
+  tag: "v1.13.4"
+  pullPolicy: IfNotPresent
+
+qbittorrent:
+  baseUrl: http://10.10.10.103:8080
+  username: ""
+  password: ""
+  existingSecret: "qbittorrent-exporter-auth-secret"
+  usernameSecretKey: username
+  passwordSecretKey: password
+
+service:
+  type: ClusterIP
+  port: 8090
+  targetPort: 8090
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  path: /metrics
+  labels:
+    release: kube-prometheus-stack
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
