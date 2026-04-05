@@ -4349,11 +4349,11 @@ prometheus:
 
     ## How long to retain metrics
     ##
-    retention: 7d
+    retention: 30d
 
     ## Maximum size of metrics
     ## Unit format should be in the form of "50GiB"
-    retentionSize: "4GiB"
+    retentionSize: "15GiB"
 
     ## Allow out-of-order/out-of-bounds samples ingested into Prometheus for a specified duration
     ## See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tsdb
@@ -4467,7 +4467,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 5Gi
+              storage: 20Gi
 
     ## Using tmpfs volume
     ##
