@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - uptimekuma-api-key-secret.yaml
   - uptimekuma-scrapeconfig.yaml
+  - qbittorrent-exporter-auth-secret.yaml

@@ -1,0 +1,20 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "qbittorrent-exporter.fullname" . }}
+  labels:
+    {{- include "qbittorrent-exporter.labels" . | nindent 4 }}
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "qbittorrent-exporter.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      interval: {{ .Values.serviceMonitor.interval }}
+      path: {{ .Values.serviceMonitor.path }}
+{{- end }}
