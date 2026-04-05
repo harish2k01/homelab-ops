@@ -18,6 +18,9 @@ spec:
   # If Uptime Kuma auth is enabled for metrics, create a Secret in the
   # monitoring namespace and store the API key as the password.
   basicAuth:
+    username:
+      name: uptimekuma-api-key-secret
+      key: username
     password:
       name: uptimekuma-api-key-secret
       key: api-key
