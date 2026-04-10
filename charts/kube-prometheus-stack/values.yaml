@@ -575,8 +575,8 @@ alertmanager:
     receivers:
     - name: 'null'
     - name: 'discord'
-      webhook_configs:
-      - url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
+      discord_configs:
+      - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
         send_resolved: true
     templates:
     - '/etc/alertmanager/config/*.tmpl'
