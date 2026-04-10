@@ -567,17 +567,38 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 12h
-      receiver: 'discord'
+      receiver: 'discord-slack'
       routes:
       - receiver: 'null'
         matchers:
           - alertname = "InfoInhibitor"
     receivers:
     - name: 'null'
-    - name: 'discord'
-      discord_configs:
-      - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
+    - name: 'discord-slack'
+      slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
         send_resolved: true
+        username: 'Alertmanager'
+        icon_emoji: ':rotating_light:'
+        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+        title_link: '{{ .ExternalURL }}'
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        fallback: '{{ .CommonLabels.alertname }} ({{ .Status }})'
+        text: >-
+          *Severity:* {{ .CommonLabels.severity }}
+          {{- if .CommonLabels.namespace }}  |  *Namespace:* {{ .CommonLabels.namespace }}{{ end }}
+          {{- if .CommonAnnotations.summary }}
+
+          *Summary:* {{ .CommonAnnotations.summary }}
+          {{- end }}
+          {{- if .CommonAnnotations.description }}
+
+          *Description:* {{ .CommonAnnotations.description }}
+          {{- end }}
+          {{- if .CommonAnnotations.runbook_url }}
+
+          *Runbook:* {{ .CommonAnnotations.runbook_url }}
+          {{- end }}
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -1066,7 +1087,7 @@ alertmanager:
 
     ## The external URL the Alertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if Alertmanager is not served from root of a DNS name. string  false
     ##
-    externalUrl:
+    externalUrl: https://alertmanager.kube.harish2k01.xyz
 
     ## The route prefix Alertmanager registers HTTP handlers for. This is useful, if using ExternalURL and a proxy is rewriting HTTP routes of a request, and the actual ExternalURL is still true,
     ## but the server serves requests under a different route prefix. For example for use with kubectl proxy.
