@@ -7,7 +7,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%s-%s" (include "grafana-dashboards.fullname" $) ($dashboardName | kebabcase) | trunc 63 | trimSuffix "-" }}
+  name: {{ printf "%s-%s-%s" (include "grafana-dashboards.fullname" $) ($folder | kebabcase) ($dashboardName | kebabcase) | trunc 63 | trimSuffix "-" }}
   labels:
     {{- include "grafana-dashboards.labels" $ | nindent 4 }}
     {{ $.Values.sidecar.label }}: {{ $.Values.sidecar.labelValue | quote }}
