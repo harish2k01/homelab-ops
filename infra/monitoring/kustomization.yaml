@@ -5,3 +5,7 @@ resources:
   - uptimekuma-api-key-secret.yaml
   - uptimekuma-scrapeconfig.yaml
   - qbittorrent-exporter-auth-secret.yaml
+  - alertmanager-ingress.yaml
+  - grafana-ingress.yaml
+  - prometheus-ingress.yaml
+  - grafana-admin-secret.yaml
