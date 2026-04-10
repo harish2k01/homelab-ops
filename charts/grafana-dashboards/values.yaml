@@ -1,0 +1,10 @@
+nameOverride: ""
+fullnameOverride: ""
+
+commonLabels: {}
+commonAnnotations: {}
+
+sidecar:
+  label: grafana_dashboard
+  labelValue: "1"
+  folderAnnotation: grafana_folder
