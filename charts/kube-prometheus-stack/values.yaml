@@ -201,7 +201,7 @@ defaultRules:
     nodeExporterRecording: true
     prometheus: true
     prometheusOperator: true
-    windows: true
+    windows: false
 
   # Defines the operator for namespace selection in rules
   # Use "=~" to include namespaces matching the pattern (default)
@@ -567,13 +567,17 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 12h
-      receiver: 'null'
+      receiver: 'discord'
       routes:
       - receiver: 'null'
         matchers:
-          - alertname = "Watchdog"
+          - alertname = "InfoInhibitor"
     receivers:
     - name: 'null'
+    - name: 'discord'
+      webhook_configs:
+      - url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
+        send_resolved: true
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -956,7 +960,8 @@ alertmanager:
     ## Secrets is a list of Secrets in the same namespace as the Alertmanager object, which shall be mounted into the
     ## Alertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/.
     ##
-    secrets: []
+    secrets:
+      - alertmanager-discord
 
     ## If false then the user will opt out of automounting API credentials.
     ##

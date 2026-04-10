@@ -9,3 +9,4 @@ resources:
   - grafana-ingress.yaml
   - prometheus-ingress.yaml
   - grafana-admin-secret.yaml
+  - alertmanager-discord-secret.yaml
