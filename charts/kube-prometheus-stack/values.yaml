@@ -1445,7 +1445,8 @@ grafana:
 
       ## Annotations for Grafana dashboard configmaps
       ##
-      annotations: {}
+      annotations:
+        grafana_folder: "Kubernetes"
       multicluster:
         global:
           enabled: false
