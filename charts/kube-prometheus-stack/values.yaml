@@ -567,17 +567,13 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 12h
-      receiver: 'discord'
+      receiver: 'null'
       routes:
       - receiver: 'null'
         matchers:
-          - alertname = "InfoInhibitor"
+          - alertname = "Watchdog"
     receivers:
     - name: 'null'
-    - name: 'discord'
-      discord_configs:
-      - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
-        send_resolved: true
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -960,8 +956,7 @@ alertmanager:
     ## Secrets is a list of Secrets in the same namespace as the Alertmanager object, which shall be mounted into the
     ## Alertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/.
     ##
-    secrets:
-      - alertmanager-discord
+    secrets: []
 
     ## If false then the user will opt out of automounting API credentials.
     ##
