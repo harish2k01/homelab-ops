@@ -581,24 +581,10 @@ alertmanager:
         username: 'Alertmanager'
         icon_emoji: ':rotating_light:'
         title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
-        title_link: '{{ .ExternalURL }}'
+        title_link: '{{ template "alertmanager.discordslack.titlelink" . }}'
         color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
         fallback: '{{ .CommonLabels.alertname }} ({{ .Status }})'
-        text: >-
-          *Severity:* {{ .CommonLabels.severity }}
-          {{- if .CommonLabels.namespace }}  |  *Namespace:* {{ .CommonLabels.namespace }}{{ end }}
-          {{- if .CommonAnnotations.summary }}
-
-          *Summary:* {{ .CommonAnnotations.summary }}
-          {{- end }}
-          {{- if .CommonAnnotations.description }}
-
-          *Description:* {{ .CommonAnnotations.description }}
-          {{- end }}
-          {{- if .CommonAnnotations.runbook_url }}
-
-          *Runbook:* {{ .CommonAnnotations.runbook_url }}
-          {{- end }}
+        text: '{{ template "alertmanager.discordslack.text" . }}'
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -627,7 +613,27 @@ alertmanager:
   ## ref: https://prometheus.io/docs/alerting/notifications/
   ##      https://prometheus.io/docs/alerting/notification_examples/
   ##
-  templateFiles: {}
+  templateFiles:
+    discord-slack.tmpl: |-
+      {{ define "alertmanager.discordslack.titlelink" -}}
+      {{- .ExternalURL -}}/#/alerts?receiver={{ .Receiver }}&filter=%7Balertname%3D%22{{ .CommonLabels.alertname }}%22{{ if .CommonLabels.namespace }}%2Cnamespace%3D%22{{ .CommonLabels.namespace }}%22{{ end }}%7D
+      {{- end }}
+
+      {{ define "alertmanager.discordslack.text" -}}
+      *Severity:* {{ .CommonLabels.severity }}
+      {{- if .CommonLabels.namespace }}
+      *Namespace:* {{ .CommonLabels.namespace }}
+      {{- end }}
+      {{- if .CommonAnnotations.summary }}
+      *Summary:* {{ .CommonAnnotations.summary }}
+      {{- end }}
+      {{- if .CommonAnnotations.description }}
+      *Description:* {{ .CommonAnnotations.description }}
+      {{- end }}
+      {{- if .CommonAnnotations.runbook_url }}
+      *Runbook:* {{ .CommonAnnotations.runbook_url }}
+      {{- end }}
+      {{- end }}
   #
   ## An example template:
   #   template_1.tmpl: |-
