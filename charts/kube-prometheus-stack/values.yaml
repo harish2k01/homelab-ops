@@ -1332,7 +1332,7 @@ grafana:
     ## This folder will be created on the Root level
     ## Only one of 'folder', 'folderUID' or 'folderRef' can be set
     ##
-    folder: Kubernetes
+    folder: General
 
     ## Which UID of the target folder contains all dashboards in Grafana
     ## This allows you to use subfolder hierarchy
@@ -1434,6 +1434,9 @@ grafana:
       enabled: true
       label: grafana_dashboard
       labelValue: "1"
+      folder: /tmp/dashboards
+      defaultFolderName: Kubernetes
+      folderAnnotation: grafana_folder
       # Allow discovery in all namespaces for dashboards
       searchNamespace: ALL
 
@@ -1450,6 +1453,7 @@ grafana:
           enabled: false
       provider:
         allowUiUpdates: false
+        foldersFromFilesStructure: true
     datasources:
       enabled: true
       defaultDatasourceEnabled: true
