@@ -1332,7 +1332,7 @@ grafana:
     ## This folder will be created on the Root level
     ## Only one of 'folder', 'folderUID' or 'folderRef' can be set
     ##
-    folder: General
+    folder: Kubernetes
 
     ## Which UID of the target folder contains all dashboards in Grafana
     ## This allows you to use subfolder hierarchy
