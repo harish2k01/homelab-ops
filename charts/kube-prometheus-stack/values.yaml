@@ -385,7 +385,7 @@ alertmanager:
 
   ## Deploy alertmanager
   ##
-  enabled: false
+  enabled: true
 
   # Optional: Override the namespace where Alertmanager will be deployed.
   namespaceOverride: ""
