@@ -1360,13 +1360,13 @@ grafana:
   defaultDashboardsInterval: 1m
 
   # Administrator credentials when not using an existing secret (see below)
-  adminUser: admin
-  adminPassword: prom-operator
+  adminUser: ""
+  adminPassword: ""
 
   # Use an existing secret for the admin user.
   admin:
     ## Name of the secret. Can be templated.
-    existingSecret: ""
+    existingSecret: grafana-admin-secret
     userKey: admin-user
     passwordKey: admin-password
 
