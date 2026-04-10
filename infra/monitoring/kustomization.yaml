@@ -10,3 +10,4 @@ resources:
   - prometheus-ingress.yaml
   - grafana-admin-secret.yaml
   - alertmanager-discord-secret.yaml
+  - raspberrypi-scrapeconfig.yaml
