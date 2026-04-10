@@ -1,25 +1,26 @@
-{{- range $path, $_ := .Files.Glob "dashboards/*/*.json" }}
-{{- $parts := splitList "/" $path -}}
-{{- $folder := index $parts 1 -}}
-{{- $filename := base $path -}}
-{{- $dashboardName := trimSuffix ".json" $filename -}}
+{{ range $path, $_ := .Files.Glob "dashboards/*/*.json" }}
+{{ $parts := splitList "/" $path }}
+{{ $folder := index $parts 1 }}
+{{ $filename := base $path }}
+{{ $dashboardName := trimSuffix ".json" $filename }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ printf "%s-%s-%s" (include "grafana-dashboards.fullname" $) ($folder | kebabcase) ($dashboardName | kebabcase) | trunc 63 | trimSuffix "-" }}
   labels:
-    {{- include "grafana-dashboards.labels" $ | nindent 4 }}
+{{ include "grafana-dashboards.labels" $ | nindent 4 }}
     {{ $.Values.sidecar.label }}: {{ $.Values.sidecar.labelValue | quote }}
-    {{- with $.Values.commonLabels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+{{ with $.Values.commonLabels }}
+{{ toYaml . | nindent 4 }}
+{{ end }}
   annotations:
     {{ $.Values.sidecar.folderAnnotation }}: {{ $folder | quote }}
-    {{- with $.Values.commonAnnotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+{{ with $.Values.commonAnnotations }}
+{{ toYaml . | nindent 4 }}
+{{ end }}
 data:
   {{ $filename }}: |
 {{ $.Files.Get $path | indent 4 }}
-{{- end }}
+
+{{ end }}
