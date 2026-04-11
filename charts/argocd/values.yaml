@@ -1123,7 +1123,7 @@ controller:
 ## Dex
 dex:
   # -- Enable dex
-  enabled: true
+  enabled: false
   # -- Dex name
   name: dex-server
 
@@ -1136,7 +1136,7 @@ dex:
 
   metrics:
     # -- Deploy metrics service
-    enabled: true
+    enabled: false
     service:
       # -- Metrics service annotations
       annotations: {}
@@ -1146,7 +1146,7 @@ dex:
       portName: http-metrics
     serviceMonitor:
       # -- Enable a prometheus ServiceMonitor
-      enabled: true
+      enabled: false
       # -- Prometheus ServiceMonitor interval
       interval: 30s
       # -- When true, honorLabels preserves the metric’s labels when they collide with the target’s labels.
