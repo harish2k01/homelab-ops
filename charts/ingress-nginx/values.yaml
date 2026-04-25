@@ -517,7 +517,7 @@ controller:
     externalIPs: []
     # -- Deprecated: Pre-defined IP address of the external controller service. Used by cloud providers to connect the resulting load balancer service to a pre-existing static IP.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer
-    loadBalancerIP: "10.10.10.253"
+    loadBalancerIP: "10.10.10.251"
     # -- Restrict access to the external controller service. Values must be CIDRs. Allows any source address by default.
     loadBalancerSourceRanges: []
     # -- Load balancer class of the external controller service. Used by cloud providers to select a load balancer implementation other than the cloud provider default.
