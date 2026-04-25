@@ -1013,7 +1013,7 @@ service:
   type: LoadBalancer
   # -- Additional annotations applied to both TCP and UDP services (e.g. for cloud provider specific config)
   annotations:
-    metallb.universe.tf/loadBalancerIPs: 10.10.10.252
+    metallb.universe.tf/loadBalancerIPs: 10.10.10.251
   # -- Additional annotations for TCP service only
   annotationsTCP: {}
   # -- Additional annotations for UDP service only
@@ -1024,7 +1024,7 @@ service:
   # -- Cannot contain type, selector or ports entries.
   spec: {}
   # externalTrafficPolicy: Cluster
-  loadBalancerIP: "10.10.10.252"
+  loadBalancerIP: "10.10.10.251"
   # clusterIP: "2.3.4.5"
   loadBalancerSourceRanges: []
   # - 192.168.0.1/32
