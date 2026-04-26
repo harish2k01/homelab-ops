@@ -1,0 +1,3 @@
+{{- if not .Values.postgres.enabled -}}
+{{- fail "This chart currently expects postgres.enabled=true and renders an internal PostgreSQL deployment." -}}
+{{- end -}}

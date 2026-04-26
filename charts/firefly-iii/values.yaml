@@ -1,0 +1,270 @@
+replicaCount: 1
+
+# Main Firefly III container image.
+image:
+  repository: fireflyiii/core
+  pullPolicy: IfNotPresent
+  tag: "v6.6.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Service exposed inside the cluster. Ingress points to this service.
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# Public ingress for Firefly III.
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+  hosts:
+    - host: firefly.harish2k01.xyz
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: firefly-iii-tls
+      hosts:
+        - firefly.harish2k01.xyz
+
+# Persistent storage for uploaded attachments.
+persistence:
+  upload:
+    enabled: true
+    storageClassName: "nfs-csi"
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    # Use an existing PVC instead of creating a new one.
+    existingClaim: ""
+
+# Internal PostgreSQL for Firefly III.
+# This chart assumes postgres.enabled=true.
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    pullPolicy: IfNotPresent
+    tag: "16-alpine"
+  service:
+    port: 5432
+  auth:
+    database: firefly
+    username: firefly
+  persistence:
+    enabled: true
+    storageClassName: "nfs-csi"
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    # Use an existing PVC instead of creating a new one.
+    existingClaim: ""
+  resources: {}
+
+# Firefly cron endpoint runner.
+# Equivalent to the cron container in your docker-compose setup.
+cronjob:
+  enabled: true
+  schedule: "0 3 * * *"
+  # Defaults to firefly.env.TZ when empty.
+  timeZone: ""
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  restartPolicy: OnFailure
+  image:
+    repository: curlimages/curl
+    pullPolicy: IfNotPresent
+    tag: "8.19.0"
+  resources: {}
+
+firefly:
+  # Non-secret Firefly III environment variables.
+  # Most of these were copied from your current .env and adapted for PostgreSQL.
+  env:
+    # Leave this on "production" for normal use.
+    APP_ENV: production
+
+    # Set to "true" if you want debug pages on errors.
+    APP_DEBUG: "false"
+
+    # Email address used in some admin-facing error messages.
+    SITE_OWNER: t.harish2478@gmail.com
+
+    # Default UI language and locale for new users.
+    DEFAULT_LANGUAGE: en_IN
+    DEFAULT_LOCALE: equal
+
+    # Container timezone.
+    TZ: Asia/Kolkata
+
+    # Set to "**" when Firefly sits behind an ingress or reverse proxy.
+    TRUSTED_PROXIES: "**"
+
+    # Application log settings.
+    LOG_CHANNEL: stack
+    APP_LOG_LEVEL: notice
+    AUDIT_LOG_LEVEL: emergency
+    AUDIT_LOG_CHANNEL: ""
+    PAPERTRAIL_HOST: ""
+    PAPERTRAIL_PORT: ""
+
+    # DB_* values are rendered by the chart from the postgres section.
+    # Keep DB_SOCKET empty unless you are using a Unix socket.
+    DB_SOCKET: ""
+
+    # PostgreSQL SSL settings.
+    PGSQL_SSL_MODE: prefer
+    PGSQL_SSL_ROOT_CERT: "null"
+    PGSQL_SSL_CERT: "null"
+    PGSQL_SSL_KEY: "null"
+    PGSQL_SSL_CRL_FILE: "null"
+    PGSQL_SCHEMA: public
+
+    # Caching/session settings. Leave as file unless you add Redis.
+    CACHE_DRIVER: file
+    SESSION_DRIVER: file
+
+    # Redis settings. Only needed if CACHE_DRIVER or SESSION_DRIVER uses redis.
+    REDIS_SCHEME: tcp
+    REDIS_PATH: ""
+    REDIS_HOST: 127.0.0.1
+    REDIS_PORT: "6379"
+    REDIS_USERNAME: ""
+    REDIS_DB: "0"
+    REDIS_CACHE_DB: "1"
+
+    # Cookie settings.
+    COOKIE_PATH: /
+    COOKIE_DOMAIN: ""
+    COOKIE_SECURE: "false"
+    COOKIE_SAMESITE: lax
+
+    # Mail settings.
+    MAIL_MAILER: "smtp"
+    MAIL_HOST: "smtp.mail.me.com"
+    MAIL_PORT: "587"
+    MAIL_FROM: lab@harish2k01.xyz
+    MAIL_ENCRYPTION: "ssl"
+    MAIL_SENDMAIL_COMMAND: ""
+    MAIL_ALLOW_SELF_SIGNED: "false"
+    MAIL_VERIFY_PEER: "true"
+    MAIL_VERIFY_PEER_NAME: "true"
+    MAILGUN_DOMAIN: ""
+    MAILGUN_ENDPOINT: api.mailgun.net
+
+    # Firefly notifications and default map position.
+    SEND_ERROR_MESSAGE: "true"
+    MAP_DEFAULT_LAT: "51.983333"
+    MAP_DEFAULT_LONG: "5.916667"
+    MAP_DEFAULT_ZOOM: "6"
+
+    # Authentication settings.
+    AUTHENTICATION_GUARD: web
+    AUTHENTICATION_GUARD_HEADER: REMOTE_USER
+    AUTHENTICATION_GUARD_EMAIL: "t.harish2478@gmail.com"
+    PASSPORT_PUBLIC_KEY: ""
+    CUSTOM_LOGOUT_URL: ""
+
+    # Security-related headers.
+    DISABLE_FRAME_HEADER: "false"
+    DISABLE_CSP_HEADER: "false"
+
+    # Optional analytics.
+    TRACKER_SITE_ID: ""
+    TRACKER_URL: ""
+
+    # Docker entrypoint tuning.
+    DKR_CHECK_SQLITE: "true"
+
+    # Leave these defaults alone unless you know why you're changing them.
+    APP_NAME: FireflyIII
+    BROADCAST_DRIVER: log
+    QUEUE_DRIVER: sync
+    CACHE_PREFIX: firefly
+    PUSHER_KEY: ""
+    PUSHER_ID: ""
+    DEMO_USERNAME: ""
+    DEMO_PASSWORD: ""
+
+    # UI layout.
+    FIREFLY_III_LAYOUT: v1
+
+    # External URL of your Firefly III instance.
+    APP_URL: https://firefly.k8s.harish2k01.xyz
+
+  secrets:
+    # Preferred option for this repo:
+    # manually create a Secret via SealedSecret outside this chart and set the
+    # resulting Secret name here.
+    #
+    # Minimum useful keys in that Secret:
+    # APP_KEY, DB_PASSWORD, STATIC_CRON_TOKEN
+    #
+    # Optional keys if you use those integrations:
+    # MAIL_USERNAME, MAIL_PASSWORD, REDIS_PASSWORD, MAILGUN_SECRET,
+    # MANDRILL_SECRET, SPARKPOST_SECRET, MAILERSEND_API_KEY,
+    # PASSPORT_PRIVATE_KEY, IPINFO_TOKEN, PUSHER_SECRET
+    existingSecret: "firefly-iii-secret"
+
+    # Bump this value when your externally managed Secret changes and you want
+    # Helm/Argo CD to roll the Firefly Deployment automatically.
+    rolloutToken: "1"
+
+    # These values are used only when existingSecret is empty.
+    inline:
+      # Must be exactly 32 characters.
+      APP_KEY: 0123456789abcdefghijklmnopqrstuv
+
+      # PostgreSQL password used by both Firefly III and the PostgreSQL pod.
+      DB_PASSWORD: CHANGE_ME_DB_PASSWORD
+
+      # Static token used by the CronJob when it calls /api/v1/cron/<token>.
+      # Must also be exactly 32 characters.
+      STATIC_CRON_TOKEN: 1234567890abcdefghijklmnopqrstuv
+
+      # Mail username. Keep as "null" when mail auth is not needed.
+      MAIL_USERNAME: "null"
+
+      # Keep as "null" when mail auth is not needed.
+      MAIL_PASSWORD: "null"
+
+      # Optional secrets for other integrations.
+      REDIS_PASSWORD: ""
+      MAILGUN_SECRET: ""
+      MANDRILL_SECRET: ""
+      SPARKPOST_SECRET: ""
+      MAILERSEND_API_KEY: ""
+      PASSPORT_PRIVATE_KEY: ""
+      IPINFO_TOKEN: ""
+      PUSHER_SECRET: ""
+
+  resources: {}
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Probes for the main Firefly III container.
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 15
+    timeoutSeconds: 1
+  startupProbe:
+    httpGet:
+      path: /health
+      port: http
+    failureThreshold: 30
+    periodSeconds: 10
