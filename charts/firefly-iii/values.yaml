@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: fireflyiii/core
   pullPolicy: IfNotPresent
-  tag: "v6.6.1"
+  tag: "6.6.1"
 
 imagePullSecrets: []
 nameOverride: ""
