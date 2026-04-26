@@ -18,6 +18,10 @@ spec:
         app.kubernetes.io/component: postgres
         {{- include "firefly-iii.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.postgres.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.postgres.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
