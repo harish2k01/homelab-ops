@@ -24,6 +24,7 @@ The cluster is managed with a GitOps workflow:
 - MetalLB
 - Longhorn
 - Gateway API
+- CSI Driver NFS
 
 ### 🌐 Networking and ingress:
 
@@ -47,6 +48,7 @@ The cluster is managed with a GitOps workflow:
 - `portfolio-prod`
 - Headlamp
 - GitHub Actions Runner Controller with runner scale sets
+- Firefly III
 
 ## 📂 Repository Layout
 
@@ -65,6 +67,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `argocd`
 - `alloy`
 - `cert-manager`
+- `csi-driver-nfs`
 - `gateway-api`
 - `grafana-dashboards`
 - `headlamp`
@@ -79,6 +82,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `qbittorrent-exporter`
 - `sealed-secrets`
 - `traefik`
+- `firefly-iii`
 - `portfolio-dev`
 - `portfolio-prod`
 - `infra`
@@ -88,7 +92,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 Contains two kinds of content:
 
 - Values files for upstream Helm charts such as Argo CD, Traefik, Longhorn, Loki, Headlamp, cert-manager, and kube-prometheus-stack
-- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, `pve-exporter`, `qbittorrent-exporter`, and `grafana-dashboards`
+- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, `pve-exporter`, `qbittorrent-exporter`, `csi-driver-nfs`, `firefly-iii`, and `grafana-dashboards`
 - Helm values for GitHub Actions Runner Controller components under `charts/actions-runner-controller/`
 
 ### `infra/`
