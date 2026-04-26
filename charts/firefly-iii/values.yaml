@@ -65,6 +65,8 @@ postgres:
     # Use an existing PVC instead of creating a new one.
     existingClaim: ""
   resources: {}
+  nodeSelector:
+    topology.kubernetes.io/zone: pve
   # Security context for PostgreSQL container. Set to match NFS-CSI requirements.
   podSecurityContext:
     runAsUser: 1000
@@ -253,7 +255,8 @@ firefly:
   podSecurityContext:
     fsGroup: 1000
   securityContext: {}
-  nodeSelector: {}
+  nodeSelector:
+    topology.kubernetes.io/zone: pve
   tolerations: []
   affinity: {}
 
