@@ -11,3 +11,4 @@ resources:
   - headlamp/
   - actions-runner-controller/
   - cloudflared/
+  - apps-prod/

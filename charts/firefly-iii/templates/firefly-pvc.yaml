@@ -1,0 +1,17 @@
+{{- if and .Values.persistence.upload.enabled (eq .Values.persistence.upload.existingClaim "") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "firefly-iii.fullname" . }}-upload
+  labels:
+    {{- include "firefly-iii.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.upload.accessModes | nindent 4 }}
+  {{- if .Values.persistence.upload.storageClassName }}
+  storageClassName: {{ .Values.persistence.upload.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.upload.size }}
+{{- end }}
