@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bentopdf
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/harish2k01/homelab-ops
+    targetRevision: main
+    path: charts/bentopdf
+    helm:
+      releaseName: bentopdf
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3
