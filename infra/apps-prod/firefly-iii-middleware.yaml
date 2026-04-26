@@ -1,0 +1,26 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: firefly-iii-headers
+  namespace: apps-prod
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-Host: "{host}"
+      X-Forwarded-Server: "{host}"
+      X-Forwarded-For: "{clientIP}"
+      Host: "{host}"
+    customResponseHeaders:
+      # Optional: X-Forwarded-Port if needed
+      # X-Forwarded-Port: "{port}"
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: firefly-iii-timeout
+  namespace: apps-prod
+spec:
+  timeouts:
+    readTimeout: "300s"
+    # Note: client_max_body_size is handled by Traefik entrypoint configuration, not per-route
