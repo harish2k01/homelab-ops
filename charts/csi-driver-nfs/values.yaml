@@ -192,7 +192,7 @@ storageClass:
   parameters:
     server: 10.10.10.253
     share: /srv/nfs
-#     subDir:
+    subDir: ${pvc.metadata.namespace}/${pvc.metadata.name}
 #     mountPermissions: "0755"
 #     csi.storage.k8s.io/provisioner-secret is only needed for providing mountOptions in DeleteVolume
 #     csi.storage.k8s.io/provisioner-secret-name: "mount-options"
