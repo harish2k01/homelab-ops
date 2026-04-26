@@ -49,6 +49,7 @@ The cluster is managed with a GitOps workflow:
 - Headlamp
 - GitHub Actions Runner Controller with runner scale sets
 - Firefly III
+- BentoPDF
 
 ## 📂 Repository Layout
 
@@ -83,6 +84,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `sealed-secrets`
 - `traefik`
 - `firefly-iii`
+- `bentopdf`
 - `portfolio-dev`
 - `portfolio-prod`
 - `infra`
@@ -92,7 +94,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 Contains two kinds of content:
 
 - Values files for upstream Helm charts such as Argo CD, Traefik, Longhorn, Loki, Headlamp, cert-manager, and kube-prometheus-stack
-- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, `pve-exporter`, `qbittorrent-exporter`, `csi-driver-nfs`, `firefly-iii`, and `grafana-dashboards`
+- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, `pve-exporter`, `qbittorrent-exporter`, `csi-driver-nfs`, `firefly-iii`, `bentopdf`, and `grafana-dashboards`
 - Helm values for GitHub Actions Runner Controller components under `charts/actions-runner-controller/`
 
 ### `infra/`
