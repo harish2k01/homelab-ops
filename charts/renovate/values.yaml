@@ -61,38 +61,22 @@ cronjob:
   argsOverride: []
   # -- Prepend shell commands before renovate runs
   preCommand: |
-    set -e
-
     echo "Generating GitHub App JWT..."
-
     HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | openssl base64 -A | tr '+/' '-_' | tr -d '=')
     NOW=$(date +%s)
     EXP=$((NOW + 540))
-
     PAYLOAD=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$NOW" "$EXP" "$RENOVATE_GITHUB_APP_ID" | openssl base64 -A | tr '+/' '-_' | tr -d '=')
-
     JWT="${HEADER}.${PAYLOAD}"
-
-    SIGNATURE=$(printf '%s' "$JWT" | openssl dgst -sha256 -sign <(printf '%s' "$RENOVATE_GITHUB_PRIVATE_KEY") | openssl base64 -A | tr '+/' '-_' | tr -d '=')
-
+    SIGNATURE=$(printf '%s' "$JWT" | openssl dgst -sha256 -sign <(printf '%s' "$RENOVATE_GITHUB_APP_KEY") | openssl base64 -A | tr '+/' '-_' | tr -d '=')
     JWT="${JWT}.${SIGNATURE}"
 
     echo "Requesting installation token..."
-
-    INSTALLATION_TOKEN=$(curl -s -X POST \
+    installation_token="$(curl -s -X POST \
       -H "Authorization: Bearer ${JWT}" \
       -H "Accept: application/vnd.github+json" \
-      "https://api.github.com/app/installations/${RENOVATE_GITHUB_INSTALLATION_ID}/access_tokens" \
-      | jq -r '.token')
-
-    if [ -z "$INSTALLATION_TOKEN" ] || [ "$INSTALLATION_TOKEN" = "null" ]; then
-      echo "❌ Failed to generate installation token"
-      exit 1
-    fi
-
-    echo "✅ Token generated"
-
-    export RENOVATE_TOKEN="$INSTALLATION_TOKEN"
+      "https://api.github.com/app/installations/${RENOVATE_GITHUB_APP_INSTALLATION_ID}/access_tokens" \
+      | jq -r '.token')"
+    export RENOVATE_TOKEN="$installation_token"
   # preCommand: |
   #   echo hello
   #   echo world
