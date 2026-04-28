@@ -238,7 +238,9 @@ resources: {}
   #  memory: 128Mi
 
 # -- Environment variables to add from existing secrets/configmaps. Uses the keys as variable name
-envFrom: []
+envFrom:
+  - secretRef:
+      name: renovate-github-app
 # envFrom:
 #   - secretRef:
 #       name: env-secrets
@@ -246,27 +248,7 @@ envFrom: []
 #       name: env-configmap
 
 # -- Environment variables to set on the renovate container
-env:
-  - name: RENOVATE_PLATFORM
-    value: github
-
-  - name: RENOVATE_GITHUB_APP_ID
-    valueFrom:
-      secretKeyRef:
-        name: renovate-github-app
-        key: RENOVATE_APP_ID
-
-  - name: RENOVATE_GITHUB_INSTALLATION_ID
-    valueFrom:
-      secretKeyRef:
-        name: renovate-github-app
-        key: RENOVATE_INSTALLATION_ID
-
-  - name: RENOVATE_GITHUB_PRIVATE_KEY
-    valueFrom:
-      secretKeyRef:
-        name: renovate-github-app
-        key: RENOVATE_PRIVATE_KEY
+env: []
 # env:
 #   VARIABLE_NAME: "value"
 
