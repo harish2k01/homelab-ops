@@ -250,7 +250,6 @@ envFrom:
 # -- Environment variables to set on the renovate container
 env:
   RENOVATE_PLATFORM: "github"
-  RENOVATE_GITHUB_APP_ENABLED: "true"
 # env:
 #   VARIABLE_NAME: "value"
 
