@@ -119,7 +119,17 @@ renovate:
       "onboarding": true,
       "requireConfig": "optional",
       "extends": ["config:recommended"],
-      "enabledManagers": ["helm-values"]
+      "enabledManagers": ["helm-values"],
+      "packageRules": [
+        {
+          "matchManagers": ["helm-values"],
+          "automerge": false
+        },
+        {
+          "matchPackageNames": ["postgres", "mysql", "mariadb"],
+          "enabled": false
+        }
+      ]
     }
   # See https://docs.renovatebot.com/self-hosted-configuration
   # config: |
