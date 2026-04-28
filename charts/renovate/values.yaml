@@ -103,7 +103,7 @@ renovate:
       "onboarding": true,
       "requireConfig": "optional",
       "extends": ["config:recommended"],
-      "enabledManagers": ["helm", "helm-values"]
+      "enabledManagers": ["helm-values"]
     }
   # See https://docs.renovatebot.com/self-hosted-configuration
   # config: |
@@ -250,19 +250,19 @@ env:
   - name: RENOVATE_PLATFORM
     value: github
 
-  - name: RENOVATE_APP_ID
+  - name: RENOVATE_GITHUB_APP_ID
     valueFrom:
       secretKeyRef:
         name: renovate-github-app
         key: RENOVATE_APP_ID
 
-  - name: RENOVATE_INSTALLATION_ID
+  - name: RENOVATE_GITHUB_INSTALLATION_ID
     valueFrom:
       secretKeyRef:
         name: renovate-github-app
         key: RENOVATE_INSTALLATION_ID
 
-  - name: RENOVATE_PRIVATE_KEY
+  - name: RENOVATE_GITHUB_PRIVATE_KEY
     valueFrom:
       secretKeyRef:
         name: renovate-github-app

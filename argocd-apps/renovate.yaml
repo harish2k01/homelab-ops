@@ -9,10 +9,9 @@ spec:
 
   sources:
     # 🔹 Upstream Helm chart
-    - repoURL: oci://ghcr.io/renovatebot/charts
+    - repoURL: https://renovatebot.github.io/helm-charts
       chart: renovate
       targetRevision: 46.138.0
-      path: .
       helm:
         releaseName: renovate
         valueFiles:
