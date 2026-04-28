@@ -12,3 +12,4 @@ resources:
   - actions-runner-controller/
   - cloudflared/
   - apps-prod/
+  - renovate/
