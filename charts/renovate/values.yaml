@@ -248,7 +248,9 @@ envFrom:
 #       name: env-configmap
 
 # -- Environment variables to set on the renovate container
-env: []
+env:
+  RENOVATE_PLATFORM: "github"
+  RENOVATE_GITHUB_APP_ENABLED: "true"
 # env:
 #   VARIABLE_NAME: "value"
 
