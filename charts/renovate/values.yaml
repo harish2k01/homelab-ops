@@ -15,7 +15,7 @@ secretAnnotations: {}
 
 cronjob:
   # -- Schedules the job to run using cron notation
-  schedule: "0 */3 * * *"  # Every 3 hours
+  schedule: "0 */6 * * *"  # Every 6 hours
   # -- You can specify a time zone for a CronJob by setting timeZone to the name of a valid time zone. (starting with k8s 1.27) <https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#time-zones>
   timeZone: 'Asia/Kolkata'  # see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for valid names
   # -- If it is set to true, all subsequent executions are suspended. This setting does not apply to already started executions.
@@ -33,7 +33,7 @@ cronjob:
   # -- Amount of failed jobs to keep in history
   failedJobsHistoryLimit: ''
   # -- Amount of completed jobs to keep in history
-  successfulJobsHistoryLimit: ''
+  successfulJobsHistoryLimit: '5'
   # -- Set to Never to restart the job when the pod fails or to OnFailure to restart when a container fails
   jobRestartPolicy: Never
   # -- Time to keep the job after it finished before automatically deleting it
