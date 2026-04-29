@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: gh-runner-scale-set
+  name: homelab-ops-gh-runner-scale-set
   namespace: argocd
 
 spec:
@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: arc-runner-set
         valueFiles:
-          - $values/charts/actions-runner-controller/gha-runner-scale-set/values.yaml
+          - $values/charts/actions-runner-controller/gha-runner-scale-set/homelab-ops-values.yaml
 
     # 🔹 Your Git repo (values source)
     - repoURL: https://github.com/harish2k01/homelab-ops

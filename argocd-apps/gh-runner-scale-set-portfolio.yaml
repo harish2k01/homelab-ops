@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio-gh-runner-scale-set
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+      targetRevision: 0.14.0
+      path: .
+      helm:
+        releaseName: arc-runner-set
+        valueFiles:
+          - $values/charts/actions-runner-controller/gha-runner-scale-set/portfolio-values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-systems
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  revisionHistoryLimit: 3
