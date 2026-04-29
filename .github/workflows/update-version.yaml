@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   update-app-version:
-    runs-on: ubuntu-latest
+    runs-on: homelab-ops-runner
 
     steps:
       - name: Create GitHub App token
