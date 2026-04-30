@@ -4,7 +4,7 @@ metadata:
   name: longhorn-safe
 provisioner: driver.longhorn.io
 reclaimPolicy: Retain
-volumeBindingMode: WaitForFirstConsumer
+volumeBindingMode: Immediate
 allowVolumeExpansion: true
 parameters:
   numberOfReplicas: "2"

@@ -305,7 +305,7 @@ defaultSettings:
   # -- Setting that prevents Longhorn Manager from scheduling replicas on a cordoned Kubernetes node. This setting is enabled by default.
   disableSchedulingOnCordonedNode: ~
   # -- Setting that allows Longhorn to schedule new replicas of a volume to nodes in the same zone as existing healthy replicas. Nodes that do not belong to any zone are treated as existing in the zone that contains healthy replicas. When identifying zones, Longhorn relies on the label "topology.kubernetes.io/zone=<Zone name of the node>" in the Kubernetes node object.
-  replicaZoneSoftAntiAffinity: ~
+  replicaZoneSoftAntiAffinity: false
   # -- Setting that allows scheduling on disks with existing healthy replicas of the same volume. This setting is enabled by default.
   replicaDiskSoftAntiAffinity: ~
   # -- Policy that defines the action Longhorn takes when a volume is stuck with a StatefulSet or Deployment pod on a node that failed.
@@ -429,7 +429,7 @@ defaultSettings:
   # -- Controls whether Longhorn monitors and records health information for node disks. When disabled, disk health checks and status updates are skipped.
   nodeDiskHealthMonitoring: ~
   # -- Comma-separated list of topology keys that the Longhorn CSI driver is allowed to pass through. When empty (default), no topology keys are passed through, and PVs will have no nodeAffinity. When configured (e.g., "topology.kubernetes.io/zone,topology.kubernetes.io/region"), only the specified keys are kept in topology segments. All other keys are filtered out from both CreateVolumeResponse.AccessibleTopology and NodeGetInfo topology.
-  csiAllowedTopologyKeys: ~
+  csiAllowedTopologyKeys: "topology.kubernetes.io/zone"
 # -- Setting that allows you to update the default backupstore.
 defaultBackupStore:
   # -- Endpoint used to access the default backupstore. (Options: "NFS", "CIFS", "AWS", "GCP", "AZURE")
