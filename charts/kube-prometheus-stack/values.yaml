@@ -1084,11 +1084,11 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: longhorn-safe
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 5Gi
+              storage: 1Gi
 
 
     ## The external URL the Alertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if Alertmanager is not served from root of a DNS name. string  false
@@ -1450,10 +1450,10 @@ grafana:
   persistence:
     enabled: true
     type: pvc
-    storageClassName: "longhorn"
+    storageClassName: "longhorn-safe"
     accessModes:
       - ReadWriteOnce
-    size: 5Gi
+    size: 2Gi
     finalizers:
       - kubernetes.io/pvc-protection
 
@@ -4500,7 +4500,7 @@ prometheus:
     ##
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: longhorn-safe
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -5348,7 +5348,7 @@ thanosRuler:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: longhorn-safe
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
