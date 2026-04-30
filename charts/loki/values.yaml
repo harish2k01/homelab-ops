@@ -176,6 +176,8 @@ loki:
     runAsGroup: 10001
     runAsNonRoot: true
     runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
   # -- The SecurityContext for Loki containers
   containerSecurityContext:
     readOnlyRootFilesystem: true
@@ -183,6 +185,8 @@ loki:
       drop:
         - ALL
     allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
   # -- Should enableServiceLinks be enabled. Default to enable
   enableServiceLinks: true
   # -- DNS config for Loki pods
