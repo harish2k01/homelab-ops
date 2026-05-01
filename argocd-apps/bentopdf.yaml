@@ -3,23 +3,34 @@ kind: Application
 metadata:
   name: bentopdf
   namespace: argocd
+
 spec:
   project: default
-  source:
-    repoURL: https://github.com/harish2k01/homelab-ops
-    targetRevision: main
-    path: charts/bentopdf
-    helm:
-      releaseName: bentopdf
-      valueFiles:
-        - values.yaml
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: bentopdf
+      targetRevision: 0.1.1
+      helm:
+        releaseName: bentopdf
+        valueFiles:
+          - $values/charts/bentopdf/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
   destination:
     server: https://kubernetes.default.svc
     namespace: apps-prod
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
   revisionHistoryLimit: 3

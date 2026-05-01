@@ -1,8 +1,0 @@
-BentoPDF is deployed in namespace {{ .Release.Namespace }}.
-
-{{- if .Values.httpRoute.enabled }}
-HTTPRoute hostnames:
-{{- range .Values.httpRoute.hostnames }}
-  - https://{{ . }}
-{{- end }}
-{{- end }}
