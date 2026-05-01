@@ -3,6 +3,10 @@ name: Update App Version
 on:
   workflow_call:
     inputs:
+      runner:
+        required: false
+        default: homelab-ops-runner
+        type: string
       app_name:
         required: true
         type: string
@@ -27,7 +31,7 @@ permissions:
 
 jobs:
   update-app-version:
-    runs-on: homelab-ops-runner
+    runs-on: ${{ inputs.runner }}
 
     steps:
       - name: Create GitHub App token
