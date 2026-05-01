@@ -1,6 +1,9 @@
 replicaCount: 1
 
-# Main Firefly III container image.
+# Main Firefly III application image.
+# The chart version and app image version are intentionally separate:
+# - Chart.yaml version tracks chart/template changes.
+# - image.tag tracks the Firefly III container version.
 image:
   repository: fireflyiii/core
   pullPolicy: IfNotPresent
@@ -10,29 +13,41 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Service exposed inside the cluster. Ingress points to this service.
+# Internal Kubernetes Service for Firefly III.
+# Ingress and HTTPRoute route traffic to this service.
 service:
   type: ClusterIP
   port: 80
   targetPort: 8080
 
-# Public ingress for Firefly III.
+# Optional Kubernetes Ingress.
+# Disabled by default so the chart can be installed safely in any cluster.
 ingress:
   enabled: false
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-  hosts:
-    - host: firefly.harish2k01.xyz
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: firefly-iii-tls
-      hosts:
-        - firefly.harish2k01.xyz
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
 
-# Persistent storage for uploaded attachments.
+# Optional Gateway API HTTPRoute.
+# Use this instead of ingress when your cluster exposes apps through Gateway API.
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - firefly.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+# Persistent storage for Firefly III uploaded attachments.
+# Set existingClaim to reuse a PVC created outside this chart.
 persistence:
   upload:
     enabled: true
@@ -40,11 +55,11 @@ persistence:
     accessModes:
       - ReadWriteOnce
     size: 1Gi
-    # Use an existing PVC instead of creating a new one.
     existingClaim: ""
 
-# Internal PostgreSQL for Firefly III.
-# This chart assumes postgres.enabled=true.
+# Internal PostgreSQL database.
+# This chart currently expects postgres.enabled=true.
+# For production use, set a real DB_PASSWORD via firefly.secrets.existingSecret.
 postgres:
   enabled: true
   image:
@@ -57,28 +72,26 @@ postgres:
     database: firefly
     username: firefly
   persistence:
+    # Set enabled=false to use ephemeral emptyDir storage.
+    # Set existingClaim to reuse a PVC created outside this chart.
     enabled: true
     storageClassName: "nfs-csi"
     accessModes:
       - ReadWriteOnce
     size: 1Gi
-    # Use an existing PVC instead of creating a new one.
     existingClaim: ""
   resources: {}
-  nodeSelector:
-    topology.kubernetes.io/zone: pve
-  # Security context for PostgreSQL container. Set to match NFS-CSI requirements.
+  nodeSelector: {}
   podSecurityContext:
     runAsUser: 1000
     runAsGroup: 1000
     fsGroup: 1000
 
-# Firefly cron endpoint runner.
-# Equivalent to the cron container in your docker-compose setup.
+# Firefly III requires its cron endpoint to be called periodically.
+# This CronJob calls /api/v1/cron/<STATIC_CRON_TOKEN> inside the cluster.
 cronjob:
   enabled: true
   schedule: "0 3 * * *"
-  # Defaults to firefly.env.TZ when empty.
   timeZone: ""
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
@@ -91,25 +104,24 @@ cronjob:
 
 firefly:
   # Non-secret Firefly III environment variables.
-  # Most of these were copied from your current .env and adapted for PostgreSQL.
+  # Override APP_URL when exposing Firefly through Ingress or HTTPRoute.
   env:
-    # Leave this on "production" for normal use.
+    # Runtime mode. Keep APP_ENV=production for normal deployments.
     APP_ENV: production
-
-    # Set to "true" if you want debug pages on errors.
     APP_DEBUG: "false"
 
-    # Email address used in some admin-facing error messages.
+    # Instance owner and default localization settings.
     SITE_OWNER: t.harish2478@gmail.com
-
     # Default UI language and locale for new users.
-    DEFAULT_LANGUAGE: en_IN
+    DEFAULT_LANGUAGE: en_US
     DEFAULT_LOCALE: equal
 
     # Container timezone.
     TZ: Asia/Kolkata
 
-    # Set to "**" when Firefly sits behind an ingress or reverse proxy.
+    # Reverse proxy and logging settings.
+    # TRUSTED_PROXIES="**" is convenient when Firefly sits behind an ingress,
+    # gateway, or load balancer.
     TRUSTED_PROXIES: "**"
 
     # Application log settings.
@@ -120,8 +132,9 @@ firefly:
     PAPERTRAIL_HOST: ""
     PAPERTRAIL_PORT: ""
 
-    # DB_* values are rendered by the chart from the postgres section.
-    # Keep DB_SOCKET empty unless you are using a Unix socket.
+    # Database connection values such as host, port, database, and username are
+    # rendered by this chart from the postgres section. These values cover
+    # optional socket/schema/SSL settings.
     DB_SOCKET: ""
 
     # PostgreSQL SSL settings.
@@ -132,11 +145,13 @@ firefly:
     PGSQL_SSL_CRL_FILE: "null"
     PGSQL_SCHEMA: public
 
-    # Caching/session settings. Leave as file unless you add Redis.
+    # Cache and session drivers. The defaults use local files.
+    # If you switch either driver to redis, configure the Redis values below.
     CACHE_DRIVER: file
     SESSION_DRIVER: file
 
-    # Redis settings. Only needed if CACHE_DRIVER or SESSION_DRIVER uses redis.
+    # Redis connection settings. Only used when cache/session/queue settings
+    # point to Redis.
     REDIS_SCHEME: tcp
     REDIS_PATH: ""
     REDIS_HOST: 127.0.0.1
@@ -145,13 +160,14 @@ firefly:
     REDIS_DB: "0"
     REDIS_CACHE_DB: "1"
 
-    # Cookie settings.
+    # Browser cookie settings. Set COOKIE_SECURE=true when serving over HTTPS.
     COOKIE_PATH: /
     COOKIE_DOMAIN: ""
     COOKIE_SECURE: "false"
     COOKIE_SAMESITE: lax
 
-    # Mail settings.
+    # Mail delivery settings. The public default logs mail instead of sending it.
+    # Use firefly.secrets for mail credentials.
     MAIL_MAILER: "smtp"
     MAIL_HOST: "smtp.mail.me.com"
     MAIL_PORT: "587"
@@ -164,13 +180,14 @@ firefly:
     MAILGUN_DOMAIN: ""
     MAILGUN_ENDPOINT: api.mailgun.net
 
-    # Firefly notifications and default map position.
-    SEND_ERROR_MESSAGE: "true"
+    # Optional error reporting behavior and default map viewport.
+    SEND_ERROR_MESSAGE: "false"
     MAP_DEFAULT_LAT: "51.983333"
     MAP_DEFAULT_LONG: "5.916667"
     MAP_DEFAULT_ZOOM: "6"
 
-    # Authentication settings.
+    # Authentication integration settings. Defaults use Firefly's built-in web
+    # authentication.
     AUTHENTICATION_GUARD: web
     AUTHENTICATION_GUARD_HEADER: REMOTE_USER
     AUTHENTICATION_GUARD_EMAIL: "t.harish2478@gmail.com"
@@ -181,14 +198,14 @@ firefly:
     DISABLE_FRAME_HEADER: "false"
     DISABLE_CSP_HEADER: "false"
 
-    # Optional analytics.
+    # Optional analytics/tracker integration.
     TRACKER_SITE_ID: ""
     TRACKER_URL: ""
 
-    # Docker entrypoint tuning.
+    # Docker entrypoint and application defaults.
     DKR_CHECK_SQLITE: "true"
 
-    # Leave these defaults alone unless you know why you're changing them.
+    # Leave these defaults alone unless you know why you're chaing them.
     APP_NAME: FireflyIII
     BROADCAST_DRIVER: log
     QUEUE_DRIVER: sync
@@ -201,46 +218,35 @@ firefly:
     # UI layout.
     FIREFLY_III_LAYOUT: v1
 
-    # External URL of your Firefly III instance.
+    # Public URL used by Firefly III when generating links and redirects.
+    # Set this to your external HTTPS URL when using Ingress or HTTPRoute.
     APP_URL: https://firefly.k8s.harish2k01.xyz
 
   secrets:
-    # Preferred option for this repo:
-    # manually create a Secret via SealedSecret outside this chart and set the
-    # resulting Secret name here.
+    # Recommended for real deployments:
+    # create a Kubernetes Secret yourself and set existingSecret to its name.
     #
-    # Minimum useful keys in that Secret:
-    # APP_KEY, DB_PASSWORD, STATIC_CRON_TOKEN
+    # Required keys:
+    # - APP_KEY: exactly 32 characters
+    # - DB_PASSWORD: PostgreSQL password
+    # - STATIC_CRON_TOKEN: exactly 32 characters
     #
-    # Optional keys if you use those integrations:
-    # MAIL_USERNAME, MAIL_PASSWORD, REDIS_PASSWORD, MAILGUN_SECRET,
-    # MANDRILL_SECRET, SPARKPOST_SECRET, MAILERSEND_API_KEY,
-    # PASSPORT_PRIVATE_KEY, IPINFO_TOKEN, PUSHER_SECRET
+    # Optional keys may be included for mail, Redis, API integrations, and
+    # passport/private-key use cases.
     existingSecret: "firefly-iii-secret"
 
-    # Bump this value when your externally managed Secret changes and you want
-    # Helm/Argo CD to roll the Firefly Deployment automatically.
+    # Bump this value when an externally managed Secret changes and you want
+    # Helm/GitOps tooling to roll the Firefly Deployment.
     rolloutToken: "1"
 
-    # These values are used only when existingSecret is empty.
+    # Inline placeholders are suitable only for local testing/evaluation.
+    # Do not use these defaults for a public or long-lived deployment.
     inline:
-      # Must be exactly 32 characters.
       APP_KEY: 0123456789abcdefghijklmnopqrstuv
-
-      # PostgreSQL password used by both Firefly III and the PostgreSQL pod.
       DB_PASSWORD: CHANGE_ME_DB_PASSWORD
-
-      # Static token used by the CronJob when it calls /api/v1/cron/<token>.
-      # Must also be exactly 32 characters.
       STATIC_CRON_TOKEN: 1234567890abcdefghijklmnopqrstuv
-
-      # Mail username. Keep as "null" when mail auth is not needed.
       MAIL_USERNAME: "null"
-
-      # Keep as "null" when mail auth is not needed.
       MAIL_PASSWORD: "null"
-
-      # Optional secrets for other integrations.
       REDIS_PASSWORD: ""
       MAILGUN_SECRET: ""
       MANDRILL_SECRET: ""
@@ -250,17 +256,16 @@ firefly:
       IPINFO_TOKEN: ""
       PUSHER_SECRET: ""
 
+  # Pod settings for the Firefly III application container.
   resources: {}
   podAnnotations: {}
   podSecurityContext:
     fsGroup: 1000
   securityContext: {}
-  nodeSelector:
-    topology.kubernetes.io/zone: pve
+  nodeSelector: {}
   tolerations: []
   affinity: {}
 
-  # Probes for the main Firefly III container.
   livenessProbe:
     httpGet:
       path: /health
