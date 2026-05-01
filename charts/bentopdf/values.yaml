@@ -21,18 +21,10 @@ service:
 
 ingress:
   enabled: false
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-  hosts:
-    - host: bentopdf.k8s.harish2k01.xyz
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: bentopdf-tls
-      hosts:
-        - bentopdf.k8s.harish2k01.xyz
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
 
 httpRoute:
   enabled: true
