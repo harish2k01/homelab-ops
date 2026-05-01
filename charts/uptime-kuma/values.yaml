@@ -72,7 +72,8 @@ database:
       existingClaim: ""
     resources: {}
     nodeSelector: {}
-    podSecurityContext: {}
+    podSecurityContext:
+      fsGroup: 1000
     healthcheck:
       enabled: true
       interval: 5s
