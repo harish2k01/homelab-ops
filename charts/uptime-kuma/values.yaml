@@ -45,7 +45,7 @@ httpRoute:
 # Uptime Kuma uses SQLite by default. Enable either mariadb or external to use MariaDB.
 database:
   mariadb:
-    enabled: false
+    enabled: true
     image:
       repository: mariadb
       pullPolicy: IfNotPresent
@@ -60,12 +60,12 @@ database:
       # Optional root password. Leave empty to let MariaDB generate a random root password.
       rootPassword: ""
       # Existing secret must contain passwordKey. rootPasswordKey is only used when rootPassword is set.
-      existingSecret: ""
+      existingSecret: "uptime-kuma-secret"
       passwordKey: db-password
       rootPasswordKey: db-root-password
     persistence:
       enabled: true
-      storageClassName: ""
+      storageClassName: "nfs-csi"
       accessModes:
         - ReadWriteOnce
       size: 2Gi
