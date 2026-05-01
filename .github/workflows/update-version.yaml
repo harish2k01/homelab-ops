@@ -59,7 +59,7 @@ jobs:
 
       - name: Install yq
         run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
 
       - name: Update image tag in values.yaml
