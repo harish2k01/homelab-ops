@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - firefly-iii-secret.yaml
-  - firefly-iii-traefik-route.yaml
-  - firefly-iii-middleware.yaml
+

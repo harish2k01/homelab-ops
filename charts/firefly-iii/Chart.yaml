@@ -1,6 +1,0 @@
-apiVersion: v2
-name: firefly-iii
-description: Firefly III with PostgreSQL, persistent storage, and a cronjob for scheduled tasks
-type: application
-version: 0.1.0
-appVersion: "version-6.6.1"
