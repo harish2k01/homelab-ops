@@ -1,0 +1,161 @@
+replicaCount: 1
+
+image:
+  repository: louislam/uptime-kuma
+  pullPolicy: IfNotPresent
+  tag: "2.2.1-slim"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  fsGroup: 1000
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3001
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - uptimekuma.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+# Database configuration.
+# Uptime Kuma uses SQLite by default. Enable either mariadb or external to use MariaDB.
+database:
+  mariadb:
+    enabled: false
+    image:
+      repository: mariadb
+      pullPolicy: IfNotPresent
+      tag: "11"
+    service:
+      port: 3306
+    auth:
+      database: uptime_kuma
+      username: uptime_kuma
+      # Password can be supplied directly for local testing. Prefer existingSecret for production.
+      password: ""
+      # Optional root password. Leave empty to let MariaDB generate a random root password.
+      rootPassword: ""
+      # Existing secret must contain passwordKey. rootPasswordKey is only used when rootPassword is set.
+      existingSecret: ""
+      passwordKey: db-password
+      rootPasswordKey: db-root-password
+    persistence:
+      enabled: true
+      storageClassName: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 2Gi
+      existingClaim: ""
+    resources: {}
+    nodeSelector: {}
+    podSecurityContext: {}
+    healthcheck:
+      enabled: true
+      interval: 5s
+      retries: 3
+      timeout: 5s
+
+  external:
+    enabled: false
+    # Uptime Kuma only supports sqlite or mariadb
+    type: "mariadb"
+    host: ""
+    port: "3306"
+    database: "uptime_kuma"
+    username: ""
+    # Password can be supplied directly for local testing. Prefer existingSecret for production.
+    password: ""
+    # Existing secret must contain passwordKey.
+    existingSecret: ""
+    passwordKey: db-password
+
+persistence:
+  enabled: true
+  storageClassName: "nfs-csi"
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+  existingClaim: ""
+
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Additional environment variables (Non-secret)
+# These override the defaults. See https://github.com/louislam/uptime-kuma/wiki/Environment-Variables
+env: {}
+  # === Server Settings ===
+  # UPTIME_KUMA_HOST: "0.0.0.0"  # Host to listen on
+  # UPTIME_KUMA_PORT: "3001"     # Port to listen on (overrides standard port)
+  
+  # === Security & Proxy ===
+  # UPTIME_KUMA_DISABLE_FRAME_SAMEORIGIN: "false"  # Set true to allow embedding in iframes
+  # UPTIME_KUMA_WS_ORIGIN_CHECK: "cors-like"       # Check WS origin: bypass or cors-like
+  # UPTIME_KUMA_ALLOW_ALL_CHROME_EXEC: "0"         # Allow executing Chrome with all permissions
+  # NOTIFICATION_PROXY: "http://proxy:8080"        # Proxy for notifications (http, https, socks)
+  # UPTIME_KUMA_CLOUDFLARED_TOKEN: ""              # Cloudflare tunnel token
+  
+  # === TLS / SSL ===
+  # NODE_EXTRA_CA_CERTS: "/path/to/cert.pem"       # Extra CA certificates
+  # NODE_TLS_REJECT_UNAUTHORIZED: "1"              # Set 0 to ignore unauthorized certs (not recommended)
+  # NODE_OPTIONS: "--insecure-http-parser"         # Advanced Node.js options
+  # UPTIME_KUMA_SSL_KEY: ""                        # Path to SSL Key
+  # UPTIME_KUMA_SSL_CERT: ""                       # Path to SSL Cert
+  # UPTIME_KUMA_SSL_KEY_PASSPHRASE: ""             # Passphrase for SSL Key
+  
+  # === Database ===
+  # (Note: Database env vars are auto-configured if database.mariadb or database.external is enabled)
+  # UPTIME_KUMA_SQLITE_SINGLE_CONNECTION: "false"  # Fix for "SQLITE_BUSY: database is locked"
+  # UPTIME_KUMA_DB_TYPE: "sqlite"                  # sqlite or mariadb
+  # UPTIME_KUMA_DB_HOSTNAME: "localhost"           # DB Host
+  # UPTIME_KUMA_DB_PORT: "3306"                    # DB Port
+  # UPTIME_KUMA_DB_SOCKET: ""                      # DB Socket
+  # UPTIME_KUMA_DB_POOL_MAX_CONNECTIONS: "10"      # Max DB connections
+  # UPTIME_KUMA_DB_NAME: "uptime_kuma"             # DB Name
+  # UPTIME_KUMA_DB_USERNAME: "uptime_kuma"         # DB Username
+  # UPTIME_KUMA_DB_SSL: "false"                    # Enable SSL for DB
+  # UPTIME_KUMA_DB_CA: ""                          # Path to DB CA Cert
