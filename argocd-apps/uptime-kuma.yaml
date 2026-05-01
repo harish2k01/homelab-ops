@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: uptime-kuma
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: uptime-kuma
+      targetRevision: 0.1.0
+      helm:
+        releaseName: uptime-kuma
+        valueFiles:
+          - $values/charts/uptime-kuma/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  revisionHistoryLimit: 3
