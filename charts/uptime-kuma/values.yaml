@@ -73,7 +73,10 @@ database:
     resources: {}
     nodeSelector: {}
     podSecurityContext:
-      fsGroup: 1000
+      runAsUser: 999
+      runAsGroup: 999
+      fsGroup: 999
+      fsGroupChangePolicy: OnRootMismatch
     healthcheck:
       enabled: true
       interval: 5s
