@@ -24,7 +24,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: apps-prod
+    namespace: monitoring
 
   syncPolicy:
     automated:
