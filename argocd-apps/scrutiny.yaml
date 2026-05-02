@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scrutiny
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # 🔹 Upstream Helm chart
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: scrutiny
+      targetRevision: 0.1.0
+      helm:
+        releaseName: scrutiny
+        valueFiles:
+          - $values/charts/scrutiny/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps-prod
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 3

@@ -12,3 +12,4 @@ resources:
   - alertmanager-discord-secret.yaml
   - raspberrypi-scrapeconfig.yaml
   - uptime-kuma-secret.yaml
+  - scrutiny-secret.yaml
