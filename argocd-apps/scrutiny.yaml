@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: scrutiny
-      targetRevision: 0.1.0
+      targetRevision: 0.1.2
       helm:
         releaseName: scrutiny
         valueFiles:
