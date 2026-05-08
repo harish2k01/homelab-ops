@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: robusta
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # Upstream Helm chart
+    - repoURL: https://robusta-charts.storage.googleapis.com
+      chart: robusta
+      targetRevision: 0.37.0
+      helm:
+        releaseName: robusta
+        valueFiles:
+          - $values/charts/robusta/values.yaml
+
+    # Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 3

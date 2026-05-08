@@ -567,24 +567,25 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 12h
-      receiver: 'discord-slack'
+      receiver: 'null'
       routes:
+      - receiver: 'robusta'
+        group_by: ['...']
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 4h
+        continue: true
+        matchers:
+          - severity =~ ".*"
       - receiver: 'null'
         matchers:
           - alertname = "InfoInhibitor"
     receivers:
     - name: 'null'
-    - name: 'discord-slack'
-      slack_configs:
-      - api_url_file: /etc/alertmanager/secrets/alertmanager-discord/discord-webhook-url
+    - name: 'robusta'
+      webhook_configs:
+      - url: 'http://robusta-runner.monitoring.svc.cluster.local/api/alerts'
         send_resolved: true
-        username: 'Alertmanager'
-        icon_emoji: ':rotating_light:'
-        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
-        title_link: '{{ template "alertmanager.discordslack.titlelink" . }}'
-        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
-        fallback: '{{ .CommonLabels.alertname }} ({{ .Status }})'
-        text: '{{ template "alertmanager.discordslack.text" . }}'
     templates:
     - '/etc/alertmanager/config/*.tmpl'
 
@@ -987,8 +988,7 @@ alertmanager:
     ## Secrets is a list of Secrets in the same namespace as the Alertmanager object, which shall be mounted into the
     ## Alertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/.
     ##
-    secrets:
-      - alertmanager-discord
+    secrets: []
 
     ## If false then the user will opt out of automounting API credentials.
     ##
