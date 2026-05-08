@@ -734,16 +734,6 @@ runner:
     limits:
       cpu: ~
   additional_env_vars:
-  - name: ACCOUNT_ID
-    valueFrom:
-      secretKeyRef:
-        name: robusta-secrets
-        key: ACCOUNT_ID
-  - name: SIGNING_KEY
-    valueFrom:
-      secretKeyRef:
-        name: robusta-secrets
-        key: SIGNING_KEY
   - name: DISCORD_WEBHOOK_URL
     valueFrom:
       secretKeyRef:
