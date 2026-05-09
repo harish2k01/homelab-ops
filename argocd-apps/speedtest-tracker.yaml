@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: speedtest-tracker
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # Upstream Helm chart
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: speedtest-tracker
+      targetRevision: 0.1.1
+      helm:
+        releaseName: speedtest-tracker
+        valueFiles:
+          - $values/charts/speedtest-tracker/values.yaml
+
+    # 🔹 Your Git repo (values source)
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 3
