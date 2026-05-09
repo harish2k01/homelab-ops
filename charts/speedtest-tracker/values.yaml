@@ -1,0 +1,314 @@
+replicaCount: 1
+
+image:
+  repository: lscr.io/linuxserver/speedtest-tracker
+  pullPolicy: IfNotPresent
+  tag: "1.14.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - speedtest.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+# Database configuration.
+# Leave all database sections disabled to use SQLite.
+# Enable exactly one section below to use MariaDB, MySQL, PostgreSQL, or an external database.
+database:
+  mariadb:
+    enabled: false
+    image:
+      repository: mariadb
+      pullPolicy: IfNotPresent
+      tag: "11"
+    service:
+      port: 3306
+    auth:
+      database: speedtest_tracker
+      username: speedtest_tracker
+      # Password can be supplied directly for local testing. Prefer existingSecret for production.
+      password: ""
+      # Optional root password. Leave empty to let MariaDB generate a random root password.
+      rootPassword: ""
+      # Existing secret must contain passwordKey. rootPasswordKey is only used when rootPassword is set.
+      existingSecret: ""
+      passwordKey: db-password
+      rootPasswordKey: db-root-password
+    persistence:
+      enabled: true
+      storageClassName: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      existingClaim: ""
+    resources: {}
+    nodeSelector: {}
+    podSecurityContext: {}
+    healthcheck:
+      enabled: true
+      interval: 5s
+      retries: 3
+      timeout: 5s
+
+  mysql:
+    enabled: false
+    image:
+      repository: mysql
+      pullPolicy: IfNotPresent
+      tag: "8"
+    service:
+      port: 3306
+    auth:
+      database: speedtest_tracker
+      username: speedtest_tracker
+      # Password can be supplied directly for local testing. Prefer existingSecret for production.
+      password: ""
+      # Optional root password. Leave empty to let MySQL generate a random root password.
+      rootPassword: ""
+      # Existing secret must contain passwordKey. rootPasswordKey is only used when rootPassword is set.
+      existingSecret: ""
+      passwordKey: db-password
+      rootPasswordKey: db-root-password
+    persistence:
+      enabled: true
+      storageClassName: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      existingClaim: ""
+    resources: {}
+    nodeSelector: {}
+    podSecurityContext: {}
+    healthcheck:
+      enabled: true
+      interval: 5s
+      retries: 5
+      timeout: 5s
+
+  postgresql:
+    enabled: false
+    image:
+      repository: postgres
+      pullPolicy: IfNotPresent
+      tag: "18"
+    service:
+      port: 5432
+    auth:
+      database: speedtest_tracker
+      username: speedtest_tracker
+      # Password can be supplied directly for local testing. Prefer existingSecret for production.
+      password: ""
+      # Existing secret must contain passwordKey.
+      existingSecret: ""
+      passwordKey: db-password
+    persistence:
+      enabled: true
+      storageClassName: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      existingClaim: ""
+    resources: {}
+    nodeSelector: {}
+    podSecurityContext: {}
+    healthcheck:
+      enabled: true
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  external:
+    enabled: false
+    # Database driver for Speedtest Tracker: mariadb, mysql, or pgsql.
+    type: "mysql"
+    host: ""
+    port: ""
+    database: "speedtest_tracker"
+    username: ""
+    # Password can be supplied directly for local testing. Prefer existingSecret for production.
+    password: ""
+    # Existing secret must contain passwordKey.
+    existingSecret: ""
+    passwordKey: db-password
+
+# Speedtest Tracker application configuration
+speedtestTracker:
+  # Recommended for production: create a Kubernetes Secret yourself and set
+  # existingSecret to its name. This allows you to manage secrets outside Helm.
+  #
+  # Required keys in the Secret:
+  # - APP_KEY: must include the base64: prefix. Generate one with:
+  #   echo -n 'base64:'; openssl rand -base64 32
+  #
+  # Optional keys:
+  # - ADMIN_PASSWORD: for initial admin password
+  # - MAIL_USERNAME: SMTP username
+  # - MAIL_PASSWORD: SMTP password
+  #
+  # Create a secret with: kubectl create secret generic speedtest-tracker-secrets \
+  #   --from-literal=APP_KEY='base64:YOUR_GENERATED_KEY' \
+  #   --from-literal=ADMIN_PASSWORD='your_admin_password' \
+  #   --from-literal=MAIL_USERNAME='smtp_user' \
+  #   --from-literal=MAIL_PASSWORD='smtp_password'
+  secrets:
+    existingSecret: "speedtest-tracker-secret"
+    rolloutToken: "1"
+    
+    # Inline secrets - suitable only for local testing/evaluation
+    # For production, use existingSecret above instead
+    inline:
+      APP_KEY: ""  # REQUIRED - Must be set by user. Use format: base64:xxxxx
+      ADMIN_PASSWORD: ""
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+
+  persistence:
+    enabled: true
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    mountPath: /config
+    existingClaim: ""
+
+  resources: {}
+
+  # Non-secret environment variables grouped by category
+  env:
+    # === APPLICATION SETTINGS ===
+    PUID: "1000"
+    PGID: "1000"
+    TZ: "Asia/Kolkata"
+    APP_NAME: "Speedtest Tracker"
+    APP_ENV: "production"  # production, testing, local, development
+    APP_DEBUG: "false"  # Enable debug mode for detailed error messages
+    # APP_URL is set by ingress/httpRoute if enabled, otherwise update here
+    APP_URL: "https://speedtest.k8s.harish2k01.xyz"
+    ASSET_URL: ""
+    APP_LOCALE: "en"
+    APP_FALLBACK_LOCALE: "en"
+    APP_TIMEZONE: "Asia/Kolkata"
+    
+    # === DISPLAY SETTINGS ===
+    DISPLAY_TIMEZONE: "Asia/Kolkata"  # Timezone for displaying results
+    DATETIME_FORMAT: "M. j, Y g:ia"  # Format for datetime display
+    CHART_DATETIME_FORMAT: "M. j - G:i"  # Format for chart labels
+    CHART_BEGIN_AT_ZERO: "true"  # Start charts at zero
+    CONTENT_WIDTH: "7xl"  # Content width for UI
+    
+    # === DATABASE SETTINGS ===
+    DB_CONNECTION: "sqlite"  # sqlite, mysql, pgsql, mariadb
+    # These are auto-configured when any database section is enabled.
+    # Override only if you are managing database env vars yourself.
+    # DB_HOST: "localhost"  # Database host
+    # DB_PORT: "3306"  # Database port
+    # DB_DATABASE: "speedtest_tracker"  # Database name
+    # DB_USERNAME: "speedtest_tracker"  # Database username
+    # DB_SOCKET: ""  # Unix socket path (optional)
+    # DB_SEARCH_PATH: ""  # PostgreSQL schema search path (optional)
+    
+    # === SPEEDTEST SCHEDULING ===
+    # Cron expression for when speedtests should run
+    # Examples: "0 */3 * * *" (every 3 hours), "0 0 * * *" (daily at midnight)
+    SPEEDTEST_SCHEDULE: "0 */3 * * *"
+    # Comma-separated list of specific Ookla server IDs to use (optional)
+    SPEEDTEST_SERVERS: ""
+    # Comma-separated list of Ookla server IDs to block (optional)
+    SPEEDTEST_BLOCKED_SERVERS: ""
+    # Network interface to use for speedtests (optional)
+    SPEEDTEST_INTERFACE: ""
+    # External IP check URLs (for internet connectivity verification)
+    SPEEDTEST_EXTERNAL_IP_URL: "https://icanhazip.com"
+    SPEEDTEST_INTERNET_CHECK_HOSTNAME: "one.one.one.one"
+    # Skip certain IPs during speedtest (optional)
+    SPEEDTEST_SKIP_IPS: ""
+    
+    # === DASHBOARD SETTINGS ===
+    PUBLIC_DASHBOARD: "false"  # Allow public access to dashboard
+    DEFAULT_CHART_RANGE: "24h"  # Default chart time range: 24h, week, month
+    
+    # === RESULT RETENTION ===
+    # Number of days to keep speedtest results (0 = keep all)
+    PRUNE_RESULTS_OLDER_THAN: "90"
+    
+    # === THRESHOLD SETTINGS (Optional) ===
+    # Set thresholds to notify when speeds fall below expected levels
+    THRESHOLD_ENABLED: "false"  # Enable threshold monitoring
+    THRESHOLD_DOWNLOAD: "0"  # Minimum download speed in Mbps (0 = disabled)
+    THRESHOLD_UPLOAD: "0"  # Minimum upload speed in Mbps (0 = disabled)
+    THRESHOLD_PING: "0"  # Maximum ping in ms (0 = disabled)
+    
+    # === ADMIN USER (Initial Setup) ===
+    # These are only used during first-time setup
+    ADMIN_NAME: "admin"
+    ADMIN_EMAIL: "t.harish2478@gmail.com"
+    # ADMIN_PASSWORD is set via secrets
+    
+    # === API SETTINGS ===
+    API_RATE_LIMIT: "60"  # API requests per minute
+    API_MAX_RESULTS: "500"  # Maximum results returned by API
+    
+    # === IP FILTERING (Optional) ===
+    ALLOWED_IPS: ""  # Comma-separated list of allowed IP addresses (optional)
+    
+    # === MAIL SETTINGS (Optional) ===
+    MAIL_MAILER: "log"  # log, smtp, mailgun, etc
+    MAIL_HOST: ""
+    MAIL_PORT: "587"
+    MAIL_SCHEME: ""
+    MAIL_FROM_ADDRESS: "speedtest-tracker@example.com"
+    MAIL_FROM_NAME: "Speedtest Tracker"
+    # MAIL_USERNAME is set via secrets
+    # MAIL_PASSWORD is set via secrets
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
