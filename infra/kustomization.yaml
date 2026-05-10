@@ -13,3 +13,4 @@ resources:
   - cloudflared/
   - apps-prod/
   - renovate/
+  - immich/
