@@ -8,3 +8,4 @@ resources:
   - library-pvc.yaml
   - immich-db-secret.yaml
   - pgsql-cloudnative.yaml
+  - immich-traefik-route.yaml
