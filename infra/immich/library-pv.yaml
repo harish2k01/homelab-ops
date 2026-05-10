@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-library-pv
+
+spec:
+  capacity:
+    storage: 1Ti
+
+  accessModes:
+    - ReadWriteMany
+
+  persistentVolumeReclaimPolicy: Retain
+
+  csi:
+    driver: nfs.csi.k8s.io
+
+    volumeHandle: immich-library
+
+    volumeAttributes:
+      server: 10.10.10.104
+      share: /mnt/Personal/Warehouse/ImmichMetaData
