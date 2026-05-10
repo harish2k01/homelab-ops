@@ -31,7 +31,7 @@ sinksConfig:
       url: "{{ env.DISCORD_WEBHOOK_URL }}"
 
 # global parameters
-clusterName: pve
+clusterName: HLAB
 clusterZone: ""
 
 global:
@@ -256,14 +256,14 @@ builtinPlaybooks:
   - logs_enricher: {}
   - pod_events_enricher: {}
 
-- name: "PrometheusRuleFailures"
-  triggers:
-  - on_prometheus_alert:
-        alert_name: PrometheusRuleFailures
-  actions:
-  - prometheus_rules_enricher: {}
-  - logs_enricher:
-      filter_regex: ".*Evaluating rule failed.*"
+# - name: "PrometheusRuleFailures"
+#   triggers:
+#   - on_prometheus_alert:
+#         alert_name: PrometheusRuleFailures
+#   actions:
+#   - prometheus_rules_enricher: {}
+#   - logs_enricher:
+#       filter_regex: ".*Evaluating rule failed.*"
 
 - name: "KubeCPUOvercommit"
   triggers:
