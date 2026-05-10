@@ -4,14 +4,14 @@
 
 # These entries are shared between all the Immich components
 
+defaultPodOptions:
+  securityContext:
+    runAsUser: 3000
+    runAsGroup: 3000
+    fsGroup: 3000
+    fsGroupChangePolicy: "OnRootMismatch"
 controllers:
   main:
-    defaultPodOptions:
-      securityContext:
-        runAsUser: 3000
-        runAsGroup: 3000
-        fsGroup: 3000
-        fsGroupChangePolicy: "OnRootMismatch"
     containers:
       main:
         image:
