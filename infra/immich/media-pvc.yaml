@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-external-library-pvc
+  namespace: immich
+
+spec:
+  accessModes:
+    - ReadOnlyMany
+
+  resources:
+    requests:
+      storage: 1Ti
+
+  volumeName: immich-external-media-pv
