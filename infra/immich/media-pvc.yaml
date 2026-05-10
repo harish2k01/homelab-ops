@@ -5,6 +5,7 @@ metadata:
   namespace: immich
 
 spec:
+  storageClassName: ""
   accessModes:
     - ReadOnlyMany
 
