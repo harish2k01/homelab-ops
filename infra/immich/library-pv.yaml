@@ -4,6 +4,7 @@ metadata:
   name: immich-library-pv
 
 spec:
+  storageClassName: ""
   capacity:
     storage: 1Ti
 
