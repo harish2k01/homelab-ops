@@ -153,7 +153,7 @@ priorityBuiltinPlaybooks:
       status: "all"
   actions:
   - name_silencer:
-      names: ["Watchdog", "KubeSchedulerDown", "KubeControllerManagerDown", "InfoInhibitor"]
+      names: ["Watchdog", "KubeSchedulerDown", "KubeControllerManagerDown", "InfoInhibitor", "PrometheusRuleFailures"]
 
 # Silences for small/local clusters
 - name: "MiniClustersPrometheusAlertsSilencer"
@@ -627,7 +627,12 @@ platformPlaybooks:
     - "robusta_ui_sink"
 
 # Any playbook name listed here will be disabled
-disabledPlaybooks: []
+disabledPlaybooks:
+  # Homelab trim: keep alert enrichment, skip dashboard/change tracking scans.
+  - K8sChangeTracking
+  - IngressChangeTracking
+  - EventBasedChangeTracking
+  - WeeklyKRRScan
 
 image:
   registry: robustadev
@@ -642,7 +647,7 @@ kubewatch:
   resources:
     requests:
       cpu: 10m
-      memory: 512Mi
+      memory: 256Mi
     limits:
       cpu: ~
   additional_env_vars:
@@ -666,16 +671,16 @@ kubewatch:
       job: true
       node: true
       hpa: true
-      clusterrole: true
-      clusterrolebinding: true
-      serviceaccount: true
-      persistentvolume: true
-      namespace: true
-      configmap: true # 0.9.17
+      clusterrole: false
+      clusterrolebinding: false
+      serviceaccount: false
+      persistentvolume: false
+      namespace: false
+      configmap: false # 0.9.17
       secret: false       # disabled for security reasons
       event: true  # updated on kubewatch 2.5
       coreevent: false # added on kubewatch 2.5
-      ingress: true # full support on kubewatch 2.4 (earlier versions have ingress bugs)
+      ingress: false # full support on kubewatch 2.4 (earlier versions have ingress bugs)
   securityContext:
     container:
       allowPrivilegeEscalation: false
@@ -729,8 +734,8 @@ runner:
   customServiceAccount: "" # to override the runner service account
   resources:
     requests:
-      cpu: 250m
-      memory: 1024Mi
+      cpu: 50m
+      memory: 512Mi
     limits:
       cpu: ~
   additional_env_vars:

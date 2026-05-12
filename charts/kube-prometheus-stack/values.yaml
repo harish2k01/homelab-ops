@@ -180,20 +180,22 @@ defaultRules:
     k8sContainerMemoryWorkingSetBytes: true
     k8sPodOwner: true
     kubeApiserverAvailability: true
-    kubeApiserverBurnrate: true
-    kubeApiserverHistogram: true
-    kubeApiserverSlos: true
-    kubeControllerManager: true
+    # Homelab trim: API server SLO/burn-rate rules are noisy and relatively
+    # expensive, and were triggering frequent PrometheusRuleFailures alerts.
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
     kubelet: true
-    kubeProxy: true
+    kubeProxy: false
     kubePrometheusGeneral: true
     kubePrometheusNodeRecording: true
     kubernetesApps: true
     kubernetesResources: true
     kubernetesStorage: true
     kubernetesSystem: true
-    kubeSchedulerAlerting: true
-    kubeSchedulerRecording: true
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
     kubeStateMetrics: true
     network: true
     node: true
@@ -305,7 +307,8 @@ defaultRules:
     # fsSelector: 'fstype=~"ext[234]|btrfs|xfs|zfs"'
 
   ## Disabled PrometheusRule alerts
-  disabled: {}
+  disabled:
+    PrometheusRuleFailures: true
   # KubeAPIDown: true
   # NodeRAIDDegraded: true
 
@@ -569,17 +572,17 @@ alertmanager:
       repeat_interval: 12h
       receiver: 'null'
       routes:
+      - receiver: 'null'
+        matchers:
+          - alertname =~ "Watchdog|InfoInhibitor|PrometheusRuleFailures"
       - receiver: 'robusta'
         group_by: ['...']
         group_wait: 1s
-        group_interval: 1s
-        repeat_interval: 4h
+        group_interval: 5m
+        repeat_interval: 12h
         continue: true
         matchers:
-          - severity =~ ".*"
-      - receiver: 'null'
-        matchers:
-          - alertname = "InfoInhibitor"
+          - severity =~ "warning|critical"
     receivers:
     - name: 'null'
     - name: 'robusta'
