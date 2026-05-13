@@ -1,0 +1,25 @@
+podSecurityContext:
+  fsGroup: 3000
+
+env:
+  PUID: "3000"
+  PGID: "3000"
+  TZ: Asia/Kolkata
+
+persistence:
+  config:
+    enabled: true
+    size: 256Mi
+    storageClassName: nfs-csi
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - prowlarr.k8s.harish2k01.xyz
+
+resources: {}
+
