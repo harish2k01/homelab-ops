@@ -4,8 +4,8 @@ podSecurityContext:
   fsGroup: 3000
 
 securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
+  runAsUser: 3000
+  runAsGroup: 3000
 
 env:
   PUID: "3000"
