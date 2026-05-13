@@ -1,0 +1,55 @@
+podSecurityContext:
+  fsGroup: 3000
+  supplementalGroups:
+    - 44
+    - 105
+
+env:
+  PUID: "3000"
+  PGID: "3000"
+  TZ: Asia/Kolkata
+
+persistence:
+  config:
+    enabled: true
+    size: 32Gi
+    storageClassName: nfs-csi
+
+media:
+  enabled: true
+  existingClaim: media-vault-pvc
+  readOnly: true
+  mounts:
+    - mountPath: /data/english
+      subPath: Movies/English Movies HD
+    - mountPath: /data/english-uhd
+      subPath: Movies/English Movies UHD
+    - mountPath: /data/tamil-uhd
+      subPath: Movies/Tamil Movies UHD
+    - mountPath: /data/tamil
+      subPath: Movies/Tamil Movies HD
+    - mountPath: /tv
+      subPath: Shows/Shows
+    - mountPath: /anime
+      subPath: Shows/Anime
+    - mountPath: /data/music
+      subPath: Music
+
+hostDevices:
+  enabled: true
+  devices:
+    - name: dri
+      hostPath: /dev/dri
+      mountPath: /dev/dri
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - jellyfin.k8s.harish2k01.xyz
+
+resources: {}
+

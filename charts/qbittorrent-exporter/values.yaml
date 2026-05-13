@@ -6,7 +6,7 @@ image:
   pullPolicy: IfNotPresent
 
 qbittorrent:
-  baseUrl: http://10.10.10.103:8080
+  baseUrl: http://qbittorrent.media.svc.cluster.local:8080
   username: ""
   password: ""
   existingSecret: "qbittorrent-exporter-auth-secret"

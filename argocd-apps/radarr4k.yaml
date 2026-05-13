@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: radarr4k
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: radarr
+      targetRevision: 0.1.0
+      helm:
+        releaseName: radarr4k
+        valueFiles:
+          - $values/charts/radarr4k/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: media
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3
+

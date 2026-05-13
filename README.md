@@ -50,6 +50,7 @@ The cluster is managed with a GitOps workflow:
 - GitHub Actions Runner Controller with runner scale sets
 - Firefly III
 - BentoPDF
+- Tor proxy
 
 ## 📂 Repository Layout
 
@@ -85,6 +86,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `traefik`
 - `firefly-iii`
 - `bentopdf`
+- `tor-proxy`
 - `portfolio-dev`
 - `portfolio-prod`
 - `infra`

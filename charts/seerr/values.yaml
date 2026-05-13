@@ -1,0 +1,24 @@
+podSecurityContext:
+  fsGroup: 1000
+
+env:
+  TZ: Asia/Kolkata
+  PORT: "5055"
+
+persistence:
+  config:
+    enabled: true
+    size: 128Mi
+    storageClassName: nfs-csi
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - jellyseerr.k8s.harish2k01.xyz
+
+resources: {}
+
