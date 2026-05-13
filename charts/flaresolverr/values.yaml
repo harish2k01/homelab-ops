@@ -1,0 +1,15 @@
+env:
+  LOG_LEVEL: info
+  LOG_HTML: "false"
+  CAPTCHA_SOLVER: none
+  TZ: Asia/Kolkata
+
+persistence:
+  config:
+    enabled: false
+
+httpRoute:
+  enabled: false
+
+resources: {}
+
