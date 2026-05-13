@@ -923,10 +923,10 @@ controller:
   resources:
     limits:
       cpu: 500m
-      memory: 768Mi
+      memory: 900Mi
     requests:
       cpu: 250m
-      memory: 384Mi
+      memory: 450Mi
 
   # Application controller container ports
   containerPorts:
@@ -2089,11 +2089,11 @@ server:
     # -- Resource limits and requests for the argocd-extensions container
     resources:
       limits:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 75m
+        memory: 256Mi
       requests:
-        cpu: 10m
-        memory: 64Mi
+        cpu: 25m
+        memory: 128Mi
 
   # -- Additional containers to be added to the server pod
   ## Note: Supports use of custom Helm templates
@@ -2947,10 +2947,10 @@ repoServer:
   resources:
     limits:
       cpu: 250m
-      memory: 512Mi
+      memory: 768Mi
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 384Mi
 
   # Repo server container ports
   containerPorts:

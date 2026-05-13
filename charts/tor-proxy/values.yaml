@@ -1,0 +1,14 @@
+# Homelab override for the published tor-proxy chart. The service remains
+# internal-only so in-cluster workloads can use socks5h://tor-proxy:9150.
+image:
+  repository: peterdavehello/tor-socks-proxy
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 9150
+  targetPort: 9150
+  portName: socks
+
+resources: {}
