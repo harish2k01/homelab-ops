@@ -51,6 +51,7 @@ The cluster is managed with a GitOps workflow:
 - Firefly III
 - BentoPDF
 - Tor proxy
+- Tailscale subnet router and exit node
 
 ## 📂 Repository Layout
 
@@ -87,6 +88,7 @@ Argo CD `Application` resources for bootstrapping and syncing workloads such as:
 - `firefly-iii`
 - `bentopdf`
 - `tor-proxy`
+- `tailscale`
 - `portfolio-dev`
 - `portfolio-prod`
 - `infra`
@@ -111,6 +113,7 @@ Kustomize-managed cluster resources and supporting manifests, including:
 - Traefik Gateway API resources
 - Headlamp infrastructure resources
 - cloudflared manifests
+- Networking SealedSecrets for services such as Tailscale
 - Actions Runner Controller supporting resources
 
 ## 🚀 How Deployments Work
