@@ -51,6 +51,8 @@ globalConfig:
   grafana_api_key: ""
   grafana_dashboard_uid: ""
   prometheus_url: ""
+  krr_args: "--allow-hpa --history_duration 336 --cpu-min 10 --mem-min 100 --cpu_percentile 99 --memory_buffer_percentage 15 --use_oomkill_data"
+  max_workers: 2
   account_id: ""
   signing_key: ""
   custom_annotations: []
@@ -194,7 +196,19 @@ priorityBuiltinPlaybooks:
   - target_down_dns_silencer: {}
 
 # custom user playbooks
-customPlaybooks: []
+customPlaybooks:
+  - name: "WeeklyKRRDiscordScan"
+    triggers:
+      - on_schedule:
+          cron_schedule_repeat:
+            cron_expression: "0 12 * * 1" # every Monday at 12:00 UTC
+    actions:
+      - krr_scan:
+          prometheus_url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+          krr_args: "--allow-hpa --history_duration 336 --cpu-min 10 --mem-min 100 --cpu_percentile 99 --memory_buffer_percentage 15 --use_oomkill_data"
+          max_workers: 2
+    sinks:
+      - "homelab_discord"
 
 # load custom playbooks by name, which allows overriding them when using multiple Helm values files - learn more https://docs.robusta.dev/master/playbook-reference/defining-playbooks/playbook-basics.html#organizing-playbooks
 namedCustomPlaybooks: {}
