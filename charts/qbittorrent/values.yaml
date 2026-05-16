@@ -1,9 +1,9 @@
 podSecurityContext:
-  fsGroup: 3000
+  fsGroup: 1000
 
 env:
-  PUID: "3000"
-  PGID: "3000"
+  PUID: "1000"
+  PGID: "1000"
   TZ: Asia/Kolkata
   WEBUI_PORT: "8080"
   TORRENTING_PORT: "6881"

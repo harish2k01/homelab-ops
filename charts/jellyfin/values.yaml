@@ -1,12 +1,12 @@
 podSecurityContext:
-  fsGroup: 3000
+  fsGroup: 1000
   supplementalGroups:
     - 44
     - 105
 
 env:
-  PUID: "3000"
-  PGID: "3000"
+  PUID: "1000"
+  PGID: "1000"
   TZ: Asia/Kolkata
 
 persistence:
