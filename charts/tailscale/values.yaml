@@ -1,0 +1,41 @@
+# Homelab override for the published tailscale chart. This deploys Tailscale
+# router pods without the Tailscale Kubernetes operator.
+replicaCount: 2
+
+image:
+  repository: tailscale/tailscale
+  # Pinned to a versioned tag so Renovate can raise image update PRs.
+  tag: "v1.96.5"
+  pullPolicy: IfNotPresent
+
+# Store the auth key in a Sealed Secret or manually created Secret named below.
+# The chart persists state, so TS_AUTH_ONCE keeps the pod from reauthenticating
+# on every restart after the first successful login.
+authKey:
+  existingSecret: tailscale-auth-secret
+  existingSecretKey: TS_AUTHKEY
+  create: false
+
+tailscale:
+  hostnameFromPodName: true
+  hostnamePrefix: homelab-
+  advertiseExitNode: true
+  routes:
+    - 10.10.10.0/24
+  userspace: false
+  authOnce: true
+  acceptDns: false
+
+persistence:
+  enabled: true
+  size: 512Mi
+  storageClassName: longhorn-safe
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 9002
+  targetPort: 9002
+  portName: http
+
+resources: {}
