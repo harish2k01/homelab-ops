@@ -10,7 +10,6 @@ resources:
   - traefik/
   - headlamp/
   - actions-runner-controller/
-  - cloudflared/
   - apps-prod/
   - renovate/
   - immich/
