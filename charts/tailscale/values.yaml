@@ -39,3 +39,14 @@ service:
   portName: http
 
 resources: {}
+
+# Keep the two Tailscale routers in separate zones. If the cluster does not have
+# two eligible zones, the second pod will remain Pending instead of colocating.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: tailscale
+        app.kubernetes.io/instance: tailscale
