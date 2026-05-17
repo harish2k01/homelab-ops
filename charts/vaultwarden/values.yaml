@@ -1,0 +1,41 @@
+podSecurityContext:
+  fsGroup: 1000
+
+env:
+  TZ: Asia/Kolkata
+  DOMAIN: https://vaultwarden.k8s.harish2k01.xyz
+  SIGNUPS_ALLOWED: "false"
+  SMTP_HOST: smtp.mail.me.com
+  SMTP_FROM: lab@harish2k01.xyz
+  SMTP_FROM_NAME: Vaultwarden
+  SMTP_SECURITY: starttls
+  SMTP_PORT: "587"
+
+secretEnv:
+  existingSecret:
+    name: vaultwarden-secret
+    keys:
+      - envName: SMTP_USERNAME
+        secretKey: SMTP_USERNAME
+        optional: true
+      - envName: SMTP_PASSWORD
+        secretKey: SMTP_PASSWORD
+        optional: true
+
+
+persistence:
+  config:
+    enabled: true
+    size: 128Mi
+    storageClassName: nfs-csi
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - vaultwarden.k8s.harish2k01.xyz
+
+resources: {}
