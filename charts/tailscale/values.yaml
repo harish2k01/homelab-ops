@@ -29,6 +29,10 @@ tailscale:
   # persisted preferences such as previously advertised exit-node routes.
   authOnce: false
   acceptDns: false
+  extraArgs:
+    # Temporarily reset persisted Tailscale prefs so the old exit-node routes
+    # are removed and only the current GitOps-managed route is advertised.
+    - --reset
   extraEnv:
     # The pod's legacy iptables path is failing to create filter/nat tables.
     # Let Tailscale choose nftables when the kernel supports it.
