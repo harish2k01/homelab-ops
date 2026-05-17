@@ -52,7 +52,7 @@ service:
   port: 80
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
-  enabled: true
+  enabled: false
   className: "nginx"
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-cloudflare
@@ -75,38 +75,38 @@ ingress:
 # (see: https://gateway-api.sigs.k8s.io/guides/)
 httpRoute:
   # HTTPRoute enabled.
-  enabled: false
+  enabled: true
   # HTTPRoute annotations.
   annotations: {}
   # Which Gateways this Route is attached to.
   parentRefs:
-    - name: gateway
-      sectionName: http
-      # namespace: default
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
   # Hostnames matching HTTP header.
   hostnames:
-    - chart-example.local
+    - portfolio.k8s.harish2k01.xyz
   # List of rules and filters applied.
   rules:
     - matches:
         - path:
             type: PathPrefix
-            value: /headers
-            #   filters:
-            #   - type: RequestHeaderModifier
-            #     requestHeaderModifier:
-            #       set:
-            #       - name: My-Overwrite-Header
-            #         value: this-is-the-only-value
-            #       remove:
-            #       - User-Agent
-            # - matches:
-            #   - path:
-            #       type: PathPrefix
-            #       value: /echo
-            #     headers:
-            #     - name: version
-            #       value: v2
+            value: /
+  #   filters:
+  #   - type: RequestHeaderModifier
+  #     requestHeaderModifier:
+  #       set:
+  #       - name: My-Overwrite-Header
+  #         value: this-is-the-only-value
+  #       remove:
+  #       - User-Agent
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /echo
+  #     headers:
+  #     - name: version
+  #       value: v2
 resources: {}
 # We usually recommend not to specify default resources and to leave this as a conscious
 # choice for the user. This also increases chances charts run on environments with little
