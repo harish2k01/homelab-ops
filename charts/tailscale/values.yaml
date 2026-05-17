@@ -19,12 +19,20 @@ authKey:
 tailscale:
   hostnameFromPodName: true
   hostnamePrefix: homelab-
-  advertiseExitNode: true
+  # Keep this as a subnet router only. Exit-node mode routes all client Internet
+  # traffic through the pod and can break connectivity if cluster egress/UDP is flaky.
+  advertiseExitNode: false
   routes:
     - 10.10.10.0/24
   userspace: false
-  authOnce: true
+  # Re-apply TS_ROUTES/TS_EXTRA_ARGS on restart so GitOps changes clear old
+  # persisted preferences such as previously advertised exit-node routes.
+  authOnce: false
   acceptDns: false
+  extraEnv:
+    # The pod's legacy iptables path is failing to create filter/nat tables.
+    # Let Tailscale choose nftables when the kernel supports it.
+    TS_DEBUG_FIREWALL_MODE: auto
 
 persistence:
   enabled: true
