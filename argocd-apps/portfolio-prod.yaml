@@ -11,7 +11,7 @@ spec:
     path: charts/portfolio-prod
   destination:
     server: https://kubernetes.default.svc
-    namespace: apps-prod
+    namespace: portfolio
   syncPolicy:
     automated:
       prune: true

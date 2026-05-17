@@ -168,8 +168,8 @@ helm template pve-exporter charts/pve-exporter
 
 ## 💡 Notable Details
 
-- `portfolio-dev` and `portfolio-prod` currently expose Kubernetes `Ingress` resources with the `nginx` ingress class.
-- Gateway API resources are also present in the repo for Traefik-based routing.
+- `portfolio-dev` and `portfolio-prod` expose Gateway API `HTTPRoute` resources through the Traefik Gateway.
+- Argo CD, Longhorn, Grafana, Prometheus, and Alertmanager also use Traefik-backed `HTTPRoute` resources.
 - TLS is managed with cert-manager.
 - Sensitive data is intended to be stored as Sealed Secrets instead of plain Kubernetes Secrets.
 - MetalLB provides service IPs for LoadBalancer workloads in the homelab network.
