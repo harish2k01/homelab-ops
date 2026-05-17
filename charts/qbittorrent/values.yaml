@@ -29,5 +29,9 @@ httpRoute:
   hostnames:
     - qbittorrent.k8s.harish2k01.xyz
 
-resources: {}
-
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
