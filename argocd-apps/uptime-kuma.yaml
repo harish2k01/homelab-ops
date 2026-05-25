@@ -5,13 +5,21 @@ metadata:
   namespace: argocd
 
 spec:
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: uptime-kuma-db
+      namespace: monitoring
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
   project: default
 
   sources:
     # 🔹 Upstream Helm chart
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: uptime-kuma
-      targetRevision: 0.1.0
+      targetRevision: 0.1.2
       helm:
         releaseName: uptime-kuma
         valueFiles:
@@ -32,5 +40,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 
   revisionHistoryLimit: 3

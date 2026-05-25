@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: bazarr
-      targetRevision: 0.1.0
+      targetRevision: 0.1.2
       helm:
         releaseName: bazarr
         valueFiles:
@@ -26,4 +26,3 @@ spec:
     syncOptions:
       - CreateNamespace=true
   revisionHistoryLimit: 3
-

@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: bentopdf
-      targetRevision: 0.1.1
+      targetRevision: 0.1.3
       helm:
         releaseName: bentopdf
         valueFiles:

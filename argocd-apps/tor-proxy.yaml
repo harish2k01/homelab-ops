@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: tor-proxy
-      targetRevision: 0.1.0
+      targetRevision: 0.1.2
       helm:
         releaseName: tor-proxy
         valueFiles:
