@@ -14,10 +14,10 @@ spec:
         valueFiles:
           - $values/charts/ghost/values.yaml
     - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: feat
+      targetRevision: main
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: feat
+      targetRevision: main
       path: infra/ghost
   destination:
     server: https://kubernetes.default.svc
