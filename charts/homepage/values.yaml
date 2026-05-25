@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/gethomepage/homepage
+  tag: "v1.13.1"
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  fsGroup: 1000
+
+serviceAccount:
+  create: true
+  automount: true
+
+rbac:
+  create: true
+  gatewayApi: true
+  traefik: false
+  metrics: true
+
+env:
+  TZ: Asia/Kolkata
+  PUID: "1000"
+  PGID: "1000"
+
+homepage:
+  allowedHosts:
+    - skynet.k8s.harish2k01.xyz
+  config:
+    enabled: false
+
+persistence:
+  config:
+    enabled: true
+    size: 128Mi
+    storageClassName: nfs-csi
+    mountPath: /app/config
+
+extraVolumeMounts:
+  - name: config
+    mountPath: /app/public/images
+    subPath: images
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - skynet.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
