@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: umami
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: umami
+      targetRevision: 0.1.0
+      helm:
+        releaseName: umami
+        valueFiles:
+          - $values/charts/umami/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: infra/umami
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: umami
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3

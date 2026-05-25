@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ghost
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: ghost
+      targetRevision: 0.1.2
+      helm:
+        releaseName: ghost
+        valueFiles:
+          - $values/charts/ghost/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: infra/ghost
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ghost
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3
