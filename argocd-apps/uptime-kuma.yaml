@@ -5,6 +5,14 @@ metadata:
   namespace: argocd
 
 spec:
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: uptime-kuma-db
+      namespace: monitoring
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
   project: default
 
   sources:
@@ -32,5 +40,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 
   revisionHistoryLimit: 3
