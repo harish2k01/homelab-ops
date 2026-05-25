@@ -11,7 +11,7 @@ spec:
     # Upstream Helm chart
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: speedtest-tracker
-      targetRevision: 0.1.1
+      targetRevision: 0.1.3
       helm:
         releaseName: speedtest-tracker
         valueFiles:
