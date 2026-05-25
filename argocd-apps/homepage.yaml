@@ -14,7 +14,7 @@ spec:
         valueFiles:
           - $values/charts/homepage/values.yaml
     - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: feat
+      targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
