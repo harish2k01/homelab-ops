@@ -1,0 +1,93 @@
+replicaCount: 1
+
+image:
+  repository: ghost
+  tag: "6.37.0"
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+deployment:
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  terminationGracePeriodSeconds: 60
+
+env:
+  url: https://ghost.k8s.harish2k01.xyz
+  NODE_ENV: production
+
+mysql:
+  enabled: true
+  image:
+    repository: mysql
+    tag: "9.7"
+    pullPolicy: IfNotPresent
+  auth:
+    database: ghost
+    username: ghost
+    existingSecret: ghost-mysql-secret
+    passwordKey: db-password
+    rootPasswordKey: db-root-password
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClassName: nfs-csi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+persistence:
+  content:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+    storageClassName: nfs-csi
+
+service:
+  type: ClusterIP
+  port: 2368
+
+ingress:
+  enabled: false
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - ghost.k8s.harish2k01.xyz
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

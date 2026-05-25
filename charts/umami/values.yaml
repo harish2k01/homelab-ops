@@ -1,0 +1,78 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/umami-software/umami
+  tag: "3.1.0"
+  pullPolicy: IfNotPresent
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+ingress:
+  enabled: false
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - umami.k8s.harish2k01.xyz
+
+database:
+  postgresql:
+    enabled: true
+    image:
+      repository: postgres
+      pullPolicy: IfNotPresent
+      tag: "15-alpine"
+    auth:
+      database: umami
+      username: umami
+      existingSecret: umami-postgresql-secret
+      passwordKey: db-password
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+      storageClassName: nfs-csi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+  external:
+    enabled: false
+
+umami:
+  secrets:
+    existingSecret: umami-app-secret
+    appSecretKey: APP_SECRET
+    rolloutToken: "1"
+    inline:
+      APP_SECRET: ""
+  env:
+    PORT: "3000"
+    DISABLE_TELEMETRY: "1"
+    APP_URL: https://umami.k8s.harish2k01.xyz
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
