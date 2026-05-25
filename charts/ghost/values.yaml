@@ -61,6 +61,19 @@ mysql:
       - ReadWriteOnce
     size: 1Gi
     storageClassName: nfs-csi
+  podSecurityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   resources:
     requests:
       cpu: 100m
