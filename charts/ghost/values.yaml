@@ -115,6 +115,7 @@ resources:
     memory: 768Mi
 
 startupProbe:
+  httpGet: null
   tcpSocket:
     port: http
   initialDelaySeconds: 10
@@ -123,6 +124,7 @@ startupProbe:
   failureThreshold: 30
 
 livenessProbe:
+  httpGet: null
   tcpSocket:
     port: http
   initialDelaySeconds: 60
@@ -131,6 +133,7 @@ livenessProbe:
   failureThreshold: 3
 
 readinessProbe:
+  httpGet: null
   tcpSocket:
     port: http
   initialDelaySeconds: 30
