@@ -29,6 +29,19 @@ deployment:
 env:
   url: https://ghost.k8s.harish2k01.xyz
   NODE_ENV: production
+  mail__transport: SMTP
+  mail__options__host: smtp.gmail.com
+  mail__options__port: "587"
+  mail__options__auth__user: harish.techinsights@gmail.com
+  mail__from: Tech Insights
+
+secretEnv:
+  existingSecret:
+    name: ghost-secret
+    keys:
+      - envName: mail__options__auth__pass
+        secretKey: mail__options__auth__pass
+        optional: false
 
 mysql:
   enabled: true

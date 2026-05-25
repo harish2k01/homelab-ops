@@ -16,6 +16,9 @@ spec:
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: feat
       ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: feat
+      path: infra/umami
   destination:
     server: https://kubernetes.default.svc
     namespace: umami
