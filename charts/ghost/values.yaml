@@ -27,7 +27,7 @@ deployment:
   terminationGracePeriodSeconds: 60
 
 env:
-  url: https://ghost.k8s.harish2k01.xyz
+  url: https://harish2k01.in
   NODE_ENV: production
   mail__transport: SMTP
   mail__options__host: smtp.gmail.com
@@ -104,7 +104,7 @@ httpRoute:
       namespace: traefik
       sectionName: websecure
   hostnames:
-    - ghost.k8s.harish2k01.xyz
+    - harish2k01.in
 
 resources:
   requests:

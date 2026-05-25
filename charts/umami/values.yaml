@@ -23,7 +23,7 @@ httpRoute:
       namespace: traefik
       sectionName: websecure
   hostnames:
-    - umami.k8s.harish2k01.xyz
+    - umami.harish2k01.xyz
 
 database:
   postgresql:
@@ -70,7 +70,7 @@ umami:
   env:
     PORT: "3000"
     DISABLE_TELEMETRY: "1"
-    APP_URL: https://umami.k8s.harish2k01.xyz
+    APP_URL: https://umami.harish2k01.xyz
   resources:
     requests:
       cpu: 100m

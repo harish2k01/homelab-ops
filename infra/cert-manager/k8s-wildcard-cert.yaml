@@ -7,6 +7,8 @@ spec:
   secretName: wildcard-k8s-tls
   dnsNames:
     - "*.k8s.harish2k01.xyz"
+    - harish2k01.in
+    - umami.harish2k01.xyz
   issuerRef:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer
