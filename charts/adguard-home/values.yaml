@@ -46,8 +46,20 @@ persistence:
     mountPath: /opt/adguardhome/conf
     subPath: conf
 
-livenessProbe: null
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
 
-readinessProbe: null
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 resources: {}
