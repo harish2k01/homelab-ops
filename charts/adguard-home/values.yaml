@@ -1,0 +1,65 @@
+replicaCount: 1
+
+image:
+  repository: adguard/adguardhome
+  tag: "v0.107.76"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 10.10.10.251
+  externalTrafficPolicy: Local
+  ports:
+    - name: dns-tcp
+      port: 53
+      targetPort: dns-tcp
+      protocol: TCP
+    - name: dns-udp
+      port: 53
+      targetPort: dns-udp
+      protocol: UDP
+
+containerPorts:
+  - name: http
+    containerPort: 80
+    protocol: TCP
+  - name: http-setup
+    containerPort: 3000
+    protocol: TCP
+  - name: dns-tcp
+    containerPort: 53
+    protocol: TCP
+  - name: dns-udp
+    containerPort: 53
+    protocol: UDP
+
+persistence:
+  accessModes:
+    - ReadWriteOnce
+  size: 512Mi
+  storageClassName: longhorn-safe
+  work:
+    mountPath: /opt/adguardhome/work
+    subPath: work
+  conf:
+    mountPath: /opt/adguardhome/conf
+    subPath: conf
+
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+resources: {}
