@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: tailscale
-      targetRevision: 0.1.2
+      targetRevision: 0.1.1
       helm:
         releaseName: tailscale
         valueFiles:
@@ -19,6 +19,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: tailscale
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: tailscale
+      namespace: tailscale
+      jsonPointers:
+        - /spec/template/spec/containers/0/env/4/value
   syncPolicy:
     automated:
       prune: true
