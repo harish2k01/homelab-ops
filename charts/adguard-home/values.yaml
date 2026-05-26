@@ -46,24 +46,8 @@ persistence:
     mountPath: /opt/adguardhome/conf
     subPath: conf
 
-livenessProbe:
-  exec:
-    command:
-      - pidof
-      - AdGuardHome
-  initialDelaySeconds: 30
-  periodSeconds: 30
-  timeoutSeconds: 5
-  failureThreshold: 3
+livenessProbe: null
 
-readinessProbe:
-  exec:
-    command:
-      - pidof
-      - AdGuardHome
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
+readinessProbe: null
 
 resources: {}
