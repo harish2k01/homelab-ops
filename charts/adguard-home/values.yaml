@@ -35,32 +35,32 @@ containerPorts:
     protocol: UDP
 
 persistence:
+  accessModes:
+    - ReadWriteOnce
+  size: 512Mi
+  storageClassName: longhorn-safe
   work:
-    enabled: true
     mountPath: /opt/adguardhome/work
-    accessModes:
-      - ReadWriteOnce
-    size: 512Mi
-    storageClassName: longhorn-safe
+    subPath: work
   conf:
-    enabled: true
     mountPath: /opt/adguardhome/conf
-    accessModes:
-      - ReadWriteOnce
-    size: 64Mi
-    storageClassName: longhorn-safe
+    subPath: conf
 
 livenessProbe:
-  tcpSocket:
-    port: http
+  exec:
+    command:
+      - pidof
+      - AdGuardHome
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 5
   failureThreshold: 3
 
 readinessProbe:
-  tcpSocket:
-    port: http
+  exec:
+    command:
+      - pidof
+      - AdGuardHome
   initialDelaySeconds: 10
   periodSeconds: 10
   timeoutSeconds: 5

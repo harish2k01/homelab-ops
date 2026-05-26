@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: adguard-home
-      targetRevision: 0.1.0
+      targetRevision: 0.1.2
       helm:
         releaseName: adguard-home
         valueFiles:
@@ -24,7 +24,7 @@ spec:
     namespace: adguard-home
   syncPolicy:
     automated:
-      prune: true
+      prune: false
       selfHeal: false
     syncOptions:
       - CreateNamespace=true
