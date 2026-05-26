@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: adguard-home
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: adguard-home
+      targetRevision: 0.1.0
+      helm:
+        releaseName: adguard-home
+        valueFiles:
+          - $values/charts/adguard-home/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: feat
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: feat
+      path: manifests/adguard-home
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: adguard-home
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3
