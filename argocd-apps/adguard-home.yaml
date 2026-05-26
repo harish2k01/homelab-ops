@@ -14,17 +14,17 @@ spec:
         valueFiles:
           - $values/charts/adguard-home/values.yaml
     - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: feat
+      targetRevision: main
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: feat
+      targetRevision: main
       path: manifests/adguard-home
   destination:
     server: https://kubernetes.default.svc
     namespace: adguard-home
   syncPolicy:
     automated:
-      prune: false
+      prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
