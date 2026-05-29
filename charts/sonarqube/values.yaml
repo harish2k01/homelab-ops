@@ -97,7 +97,7 @@ containerSecurityContext:
 elasticsearch:
   # (DEPRECATED) Use initSysctl.enabled instead
   configureNode: false
-  bootstrapChecks: true
+  bootstrapChecks: false
 
 service:
   type: ClusterIP
@@ -327,7 +327,7 @@ caCerts:
   #   path: my-certificate.crt
 
 initSysctl:
-  enabled: true
+  enabled: false
   vmMaxMapCount: 524288
   fsFileMax: 131072
   nofile: 131072
