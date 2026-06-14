@@ -1,0 +1,141 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/harish2k01/portfolio-tracker
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - portfolio-tracker.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+database:
+  postgresql:
+    enabled: true
+    image:
+      repository: postgres
+      pullPolicy: IfNotPresent
+      tag: "16-alpine"
+    service:
+      port: 5432
+    auth:
+      database: portfolio_tracker
+      username: portfolio_tracker
+      existingSecret: portfolio-tracker-postgresql-secret
+      passwordKey: db-password
+    persistence:
+      enabled: true
+      storageClassName: nfs-csi
+      accessModes:
+        - ReadWriteOnce
+      size: 2Gi
+      existingClaim: ""
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    podSecurityContext: {}
+    healthcheck:
+      enabled: true
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  external:
+    enabled: false
+    url: ""
+    existingSecret: ""
+    databaseUrlKey: DATABASE_URL
+
+portfolioTracker:
+  secrets:
+    # Must contain NEXTAUTH_SECRET and may contain SMTP_USER and SMTP_PASS.
+    existingSecret: portfolio-tracker-app-secret
+    rolloutToken: "1"
+    inline:
+      NEXTAUTH_SECRET: ""
+      SMTP_USER: ""
+      SMTP_PASS: ""
+  env:
+    NEXTAUTH_URL: https://portfolio-tracker.k8s.harish2k01.xyz
+    APP_BASE_URL: https://portfolio-tracker.k8s.harish2k01.xyz
+    SMTP_HOST: smtp.mail.me.com
+    SMTP_PORT: "587"
+    SMTP_FROM: lab@harish2k01.xyz
+    SMTP_SECURE: "false"
+  envFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 750m
+      memory: 1Gi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
