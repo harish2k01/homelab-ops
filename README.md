@@ -1,190 +1,221 @@
-# 🏠 Homelab-Ops
+# 🏠 Homelab Ops
 
 GitOps repository for my self-hosted Kubernetes homelab.
 
-This repo uses Argo CD to continuously reconcile infrastructure and application manifests from Git into the cluster. It combines upstream Helm charts, custom Helm charts, and Kustomize-managed infrastructure so the cluster state stays declarative, observable, and repeatable.
+This repository is the source of truth for cluster infrastructure, platform services, observability, and self-hosted applications. Argo CD continuously reconciles the manifests in this repo into the cluster using a mix of upstream Helm charts, local Helm charts, and Kustomize-managed infrastructure.
 
 ## 📋 Overview
 
-The cluster is managed with a GitOps workflow:
+The cluster is managed with a declarative GitOps workflow:
 
-1. Infrastructure and app configuration live in this repository.
-2. Argo CD watches the repo and syncs changes automatically.
-3. Helm is used for upstream charts and custom workloads.
-4. Kustomize is used for cluster-level infrastructure resources.
-5. Monitoring dashboards and app-specific exporters are managed alongside the platform.
-
-## 🛠️ Current Stack
-
-### 🎯 Core platform:
-
-- Argo CD
-- cert-manager
-- Sealed Secrets
-- MetalLB
-- Longhorn
-- Gateway API
-- CSI Driver NFS
-
-### 🌐 Networking and ingress:
-
-- ingress-nginx
-- Traefik
-- cloudflared
-
-### 📊 Observability:
-
-- kube-prometheus-stack
-- Grafana
-- Grafana dashboards
-- Loki
-- Alloy
-- pve-exporter for Proxmox metrics
-- qbittorrent-exporter
-
-### 📱 Applications and services:
-
-- `portfolio-dev`
-- `portfolio-prod`
-- Headlamp
-- GitHub Actions Runner Controller with runner scale sets
-- Firefly III
-- BentoPDF
-- Tor proxy
-- Tailscale subnet router and exit node
+1. Infrastructure and application configuration live in this repository.
+2. Argo CD watches the `main` branch and syncs changes into the cluster.
+3. Upstream applications are installed with Helm and repo-managed values files.
+4. Custom workloads are packaged as local Helm charts.
+5. Cluster resources and supporting manifests are managed with Kustomize.
+6. Secrets are committed as encrypted Sealed Secrets where possible.
 
 ## 📂 Repository Layout
 
 ```text
 .
-|-- argocd-apps/     # Argo CD Application manifests
-|-- charts/          # Helm values files and custom Helm charts
-|-- infra/           # Kustomize-managed infrastructure resources
+|-- argocd-apps/   # Argo CD Application manifests
+|-- charts/        # Helm values files and local Helm charts
+|-- infra/         # Kustomize-managed cluster resources
+|-- manifests/     # Standalone manifests consumed by selected apps
 `-- README.md
 ```
 
-### `argocd-apps/`
+## 🧰 Stack
 
-Argo CD `Application` resources for bootstrapping and syncing workloads such as:
+### 🚀 GitOps and cluster platform
 
-- `argocd`
-- `alloy`
-- `cert-manager`
-- `csi-driver-nfs`
-- `gateway-api`
-- `grafana-dashboards`
-- `headlamp`
-- `gh-runner-scale-set-controller`
-- `gh-runner-scale-set`
-- `ingress-nginx`
-- `kube-prometheus-stack`
-- `loki`
-- `longhorn`
-- `metallb`
-- `pve-exporter`
-- `qbittorrent-exporter`
-- `sealed-secrets`
-- `traefik`
-- `firefly-iii`
-- `bentopdf`
-- `tor-proxy`
-- `tailscale`
-- `portfolio-dev`
-- `portfolio-prod`
-- `infra`
+- Argo CD
+- cert-manager
+- Sealed Secrets
+- Gateway API
+- MetalLB
+- Longhorn
+- CSI Driver NFS
+- CloudNativePG
 
-### `charts/`
+### 🌐 Networking and access
 
-Contains two kinds of content:
+- Traefik
+- ingress-nginx
+- cloudflared
+- Tailscale
 
-- Values files for upstream Helm charts such as Argo CD, Traefik, Longhorn, Loki, Headlamp, cert-manager, and kube-prometheus-stack
-- Custom Helm charts for workloads managed directly from this repo, including `portfolio-dev`, `portfolio-prod`, `pve-exporter`, `qbittorrent-exporter`, `csi-driver-nfs`, `firefly-iii`, `bentopdf`, and `grafana-dashboards`
-- Helm values for GitHub Actions Runner Controller components under `charts/actions-runner-controller/`
+### 📊 Observability
 
-### `infra/`
+- kube-prometheus-stack
+- Grafana dashboards
+- Loki
+- Alloy
+- Uptime Kuma
+- Speedtest Tracker
+- Robusta
+- Scrutiny
+- Proxmox exporter
+- qBittorrent exporter
 
-Kustomize-managed cluster resources and supporting manifests, including:
+### 🤖 CI and automation
 
-- Argo CD ingress resources
-- cert-manager issuers and certificates
-- Grafana, Prometheus, and Alertmanager ingress resources
-- Longhorn ingress and storage configuration
-- MetalLB configuration
+- GitHub Actions Runner Controller
+- Runner scale sets for `homelab-ops`, `helm-charts`, and `portfolio`
+- Renovate
+
+### 📦 Applications
+
+- AdGuard Home
+- Bazarr and Bazarr 4K
+- BentoPDF
+- Firefly III
+- FlareSolverr
+- Ghost
+- Headlamp
+- Homepage
+- Immich
+- Jellyfin
+- Portfolio dev/prod
+- Portfolio Tracker
+- Prowlarr
+- qBittorrent
+- Radarr and Radarr 4K
+- Seerr
+- SonarQube
+- Sonarr and Sonarr Anime
+- Tor proxy
+- Umami
+- Vaultwarden
+
+## 🔄 Deployment Model
+
+Most applications are represented by an Argo CD `Application` in `argocd-apps/`.
+
+Upstream Helm chart deployments use Argo CD multi-source applications:
+
+- one source points at the upstream Helm repository
+- one source points at this repository as the values source
+- the chart consumes the matching `charts/<app>/values.yaml`
+
+Local workloads are deployed directly from charts in this repository, including custom charts such as:
+
+- `charts/grafana-dashboards`
+- `charts/portfolio-dev`
+- `charts/portfolio-prod`
+- `charts/pve-exporter`
+- `charts/qbittorrent-exporter`
+
+Infrastructure resources are reconciled through the `infra` Argo CD application, which points at the `infra/` Kustomize root.
+
+## 🏗️ Infrastructure
+
+The `infra/` tree contains cluster-level resources and supporting app manifests, including:
+
+- Argo CD HTTPRoute resources
+- cert-manager issuers and wildcard certificates
+- Longhorn routes and storage class configuration
+- MetalLB address pool configuration
 - Traefik Gateway API resources
-- Headlamp infrastructure resources
-- cloudflared manifests
-- Networking SealedSecrets for services such as Tailscale
-- Actions Runner Controller supporting resources
+- monitoring routes, scrape configs, and alerting secrets
+- GitHub Actions Runner Controller secrets and supporting resources
+- app-specific persistent volumes, routes, and sealed secrets
 
-## 🚀 How Deployments Work
+The root kustomization currently includes:
 
-Most third-party apps are deployed with multi-source Argo CD applications:
+```text
+infra/
+|-- actions-runner-controller/
+|-- apps-prod/
+|-- argocd/
+|-- cert-manager/
+|-- headlamp/
+|-- immich/
+|-- longhorn/
+|-- media/
+|-- metallb/
+|-- monitoring/
+|-- renovate/
+|-- tailscale/
+|-- traefik/
+`-- vaultwarden/
+```
 
-- Source 1: upstream Helm chart repository
-- Source 2: this repository for the matching `values.yaml`
+## ⚡ Bootstrap
 
-Custom apps such as `portfolio-*`, `pve-exporter`, `qbittorrent-exporter`, and `grafana-dashboards` are deployed directly from local charts in [`charts/`](https://github.com/harish2k01/homelab-ops/tree/main/charts).
+Prerequisites:
 
-Infrastructure resources under [`infra/`](https://github.com/harish2k01/homelab-ops/tree/main/infra) are applied through the `infra` Argo CD application using Kustomize.
-
-## ⚡ Getting Started
-
-### 📋 Prerequisites
-
-- A working Kubernetes cluster
+- a working Kubernetes cluster
 - `kubectl`
 - `helm`
-- `kustomize` for local rendering and validation
-- Access to the cluster with enough permissions to install controllers and CRDs
+- `kustomize`
+- access to install controllers, CRDs, and cluster-scoped resources
+- Argo CD installed or a plan to bootstrap it manually first
 
-### 🔧 Bootstrap
-
-Clone the repo:
+Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/harish2k01/homelab-ops.git
 cd homelab-ops
 ```
 
-Apply the Argo CD app definitions after Argo CD itself is available in the cluster:
+After Argo CD is available in the cluster, apply the app definitions:
 
 ```bash
 kubectl apply -f argocd-apps/
 ```
 
-If you want to inspect the raw infrastructure manifests locally:
+Argo CD will then reconcile the declared applications and infrastructure from Git.
+
+## ✅ Local Validation
+
+Render the Kustomize infrastructure root:
 
 ```bash
 kustomize build infra/
 ```
 
-If you want to render a chart locally:
+Render local Helm charts:
 
 ```bash
 helm template grafana-dashboards charts/grafana-dashboards
 helm template portfolio-prod charts/portfolio-prod
 helm template pve-exporter charts/pve-exporter
+helm template qbittorrent-exporter charts/qbittorrent-exporter
 ```
 
-## 💡 Notable Details
+Inspect an upstream-chart values file before syncing:
 
-- `portfolio-dev` and `portfolio-prod` expose Gateway API `HTTPRoute` resources through the Traefik Gateway.
-- Argo CD, Longhorn, Grafana, Prometheus, and Alertmanager also use Traefik-backed `HTTPRoute` resources.
-- TLS is managed with cert-manager.
-- Sensitive data is intended to be stored as Sealed Secrets instead of plain Kubernetes Secrets.
-- MetalLB provides service IPs for LoadBalancer workloads in the homelab network.
-- Grafana dashboards are versioned in Git and deployed through a dedicated Helm chart.
-- Proxmox and qBittorrent metrics are collected through exporter workloads and surfaced in Grafana.
+```bash
+helm show values <repo>/<chart>
+```
 
-## 🔐 Secret Management
+## 🔐 Secrets
 
-Secrets should be committed in encrypted form using Sealed Secrets:
+Sensitive values should not be committed as plain Kubernetes `Secret` manifests. Use Sealed Secrets for cluster-bound secrets:
 
-1. Create a regular Kubernetes Secret manifest.
+1. Create a normal Kubernetes Secret manifest locally.
 2. Seal it with the cluster's Sealed Secrets public certificate.
 3. Commit the sealed manifest to Git.
 4. Let Argo CD sync it into the cluster.
 
-## ✨ Why This Repo Exists
+Example workflow:
 
-This repository serves both as the operational source of truth for my homelab and as a practical DevOps portfolio project. It reflects how I manage cluster infrastructure, ingress, storage, observability, dashboards, and application delivery in a reproducible way.
+```bash
+kubeseal --format yaml --cert sealed-secrets.pem < secret.yaml > sealed-secret.yaml
+```
+
+## 📝 Operating Notes
+
+- Argo CD automated sync is enabled for the app manifests in this repo.
+- Most apps use `CreateNamespace=true` so namespaces can be created during sync.
+- Gateway API `HTTPRoute` resources are primarily routed through the Traefik Gateway.
+- TLS is managed with cert-manager.
+- MetalLB provides LoadBalancer addresses on the homelab network.
+- Grafana dashboards are versioned in Git and deployed through the `grafana-dashboards` chart.
+- Renovate tracks dependency updates for charts and container images.
+
+## 🎯 Purpose
+
+This repo documents and operates a Kubernetes-based homelab in a reproducible way. It also serves as a practical DevOps portfolio project covering GitOps, Helm, Kustomize, ingress, storage, secrets, observability, automation, and self-hosted application delivery.

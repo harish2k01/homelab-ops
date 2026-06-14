@@ -74,6 +74,10 @@ jobs:
           cd ops
           CHART_FILE="${{ env.CHART_PATH }}"
           NEW_VERSION="${{ inputs.image_tag }}"
+          if [ ! -f "$CHART_FILE" ]; then
+            echo "$CHART_FILE does not exist; skipping local chart appVersion update."
+            exit 0
+          fi
           yq -i ".appVersion = \"$NEW_VERSION\"" "$CHART_FILE"
 
       - name: Commit and push changes
