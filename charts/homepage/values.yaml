@@ -33,7 +33,7 @@ persistence:
   config:
     enabled: true
     size: 128Mi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
     mountPath: /app/config
 
 extraVolumeMounts:

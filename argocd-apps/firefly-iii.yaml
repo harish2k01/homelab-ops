@@ -21,10 +21,13 @@ spec:
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: infra/firefly-iii
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: apps-prod
+    namespace: firefly-iii
 
   syncPolicy:
     automated:

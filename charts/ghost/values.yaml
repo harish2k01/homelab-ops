@@ -60,7 +60,7 @@ mysql:
     accessModes:
       - ReadWriteOnce
     size: 1Gi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
   podSecurityContext:
     fsGroup: 1000
     fsGroupChangePolicy: OnRootMismatch
@@ -88,7 +88,7 @@ persistence:
     accessModes:
       - ReadWriteOnce
     size: 2Gi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
 
 service:
   type: ClusterIP

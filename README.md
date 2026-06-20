@@ -122,24 +122,15 @@ The `infra/` tree contains cluster-level resources and supporting app manifests,
 - GitHub Actions Runner Controller secrets and supporting resources
 - app-specific persistent volumes, routes, and sealed secrets
 
+App-specific and platform-specific overlays are attached to their matching
+Argo CD applications as additional sources. The root kustomization only keeps
+shared resources that are not owned by a single app.
+
 The root kustomization currently includes:
 
 ```text
 infra/
-|-- actions-runner-controller/
-|-- apps-prod/
-|-- argocd/
-|-- cert-manager/
-|-- headlamp/
-|-- immich/
-|-- longhorn/
-|-- media/
-|-- metallb/
-|-- monitoring/
-|-- renovate/
-|-- tailscale/
-|-- traefik/
-`-- vaultwarden/
+`-- media/
 ```
 
 ## ⚡ Bootstrap

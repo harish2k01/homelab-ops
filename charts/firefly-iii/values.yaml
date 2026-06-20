@@ -51,7 +51,7 @@ httpRoute:
 persistence:
   upload:
     enabled: true
-    storageClassName: "nfs-csi"
+    storageClassName: "longhorn"
     accessModes:
       - ReadWriteOnce
     size: 1Gi
@@ -75,7 +75,7 @@ postgres:
     # Set enabled=false to use ephemeral emptyDir storage.
     # Set existingClaim to reuse a PVC created outside this chart.
     enabled: true
-    storageClassName: "nfs-csi"
+    storageClassName: "longhorn"
     accessModes:
       - ReadWriteOnce
     size: 1Gi
