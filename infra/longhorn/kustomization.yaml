@@ -3,4 +3,3 @@ kind: Kustomization
 
 resources:
   - longhorn-httproute.yaml
-  - longhorn-storage-class.yaml
