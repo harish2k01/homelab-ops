@@ -115,7 +115,7 @@ The `infra/` tree contains cluster-level resources and supporting app manifests,
 
 - Argo CD HTTPRoute resources
 - cert-manager issuers and wildcard certificates
-- Longhorn routes and storage class configuration
+- Longhorn routes and platform configuration
 - MetalLB address pool configuration
 - Traefik Gateway API resources
 - monitoring routes, scrape configs, and alerting secrets
@@ -204,6 +204,8 @@ kubeseal --format yaml --cert sealed-secrets.pem < secret.yaml > sealed-secret.y
 - Gateway API `HTTPRoute` resources are primarily routed through the Traefik Gateway.
 - TLS is managed with cert-manager.
 - MetalLB provides LoadBalancer addresses on the homelab network.
+- Longhorn is the default dynamic storage backend for application PVCs.
+- The NFS CSI driver remains installed for static NFS-backed PVs used by Immich and the media library; the dynamic `nfs-csi` StorageClass is not created.
 - Grafana dashboards are versioned in Git and deployed through the `grafana-dashboards` chart.
 - Renovate tracks dependency updates for charts and container images.
 
