@@ -63,11 +63,11 @@ valkey:
   persistence:
     data:
       enabled: true
-      size: 1Gi
+      size: 512Mi
       # Optional: Set this to persistentVolumeClaim to keep job queues persistent
       type: persistentVolumeClaim
       accessMode: ReadWriteOnce
-      storageClass: longhorn-safe
+      storageClass: longhorn
 
 # Immich components
 
@@ -133,8 +133,8 @@ machine-learning:
   persistence:
     cache:
       enabled: true
-      size: 10Gi
+      size: 5Gi
       # Optional: Set this to persistentVolumeClaim to avoid downloading the ML models every start.
       type: persistentVolumeClaim
       accessMode: ReadWriteOnce
-      storageClass: longhorn-safe
+      storageClass: longhorn

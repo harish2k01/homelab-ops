@@ -34,8 +34,8 @@ tailscale:
 
 persistence:
   enabled: true
-  size: 512Mi
-  storageClassName: longhorn-safe
+  size: 128Mi
+  storageClassName: longhorn
 
 service:
   enabled: true

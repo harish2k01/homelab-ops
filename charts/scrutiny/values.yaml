@@ -32,11 +32,11 @@ scrutiny:
 persistence:
   enabled: true
   accessMode: ReadWriteOnce
-  storageClassName: ""
+  storageClassName: longhorn
   scrutiny:
     size: 1Gi
   influxdb:
-    size: 10Gi
+    size: 2Gi
 
 ingress:
   enabled: false

@@ -1087,7 +1087,7 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn-safe
+          storageClassName: longhorn
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -1453,7 +1453,7 @@ grafana:
   persistence:
     enabled: true
     type: pvc
-    storageClassName: "longhorn-safe"
+    storageClassName: "longhorn"
     accessModes:
       - ReadWriteOnce
     size: 2Gi
@@ -4503,7 +4503,7 @@ prometheus:
     ##
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn-safe
+          storageClassName: longhorn
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -5351,7 +5351,7 @@ thanosRuler:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn-safe
+          storageClassName: longhorn
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
