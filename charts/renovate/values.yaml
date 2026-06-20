@@ -120,9 +120,6 @@ renovate:
       "requireConfig": "optional",
       "extends": ["config:recommended"],
       "enabledManagers": ["helm-values", "argocd"],
-      "argocd": {
-        "managerFilePatterns": ["/^argocd-apps/.+\\.ya?ml$/"]
-      },
       "packageRules": [
         {
           "matchManagers": ["helm-values", "argocd"],
