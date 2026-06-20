@@ -1,3 +1,9 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["argocd"],
+  "includePaths": ["argocd-apps/**"],
+  "argocd": {
+    "managerFilePatterns": ["/^argocd-apps/.+\\.ya?ml$/"]
+  },
+  "ignorePaths": ["charts/**"]
 }
