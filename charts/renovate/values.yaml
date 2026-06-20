@@ -115,14 +115,17 @@ renovate:
   config: |
     {
       "platform": "github",
-      "repositories": ["harish2k01/helm-charts"],
+      "repositories": ["harish2k01/helm-charts", "harish2k01/homelab-ops"],
       "onboarding": true,
       "requireConfig": "optional",
       "extends": ["config:recommended"],
-      "enabledManagers": ["helm-values"],
+      "enabledManagers": ["helm-values", "argocd"],
+      "argocd": {
+        "managerFilePatterns": ["/^argocd-apps/.+\\.ya?ml$/"]
+      },
       "packageRules": [
         {
-          "matchManagers": ["helm-values"],
+          "matchManagers": ["helm-values", "argocd"],
           "automerge": false
         },
         {
