@@ -185,7 +185,7 @@ imagePullSecrets: []
 
 ## StorageClass resource example:
 storageClass:
-  create: true
+  create: false
   name: nfs-csi
   # annotations:
   #   storageclass.kubernetes.io/is-default-class: "true"
