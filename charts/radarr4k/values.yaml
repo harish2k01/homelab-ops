@@ -10,7 +10,7 @@ persistence:
   config:
     enabled: true
     size: 512Mi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
 
 media:
   enabled: true
@@ -28,4 +28,3 @@ httpRoute:
     - radarr-4k.k8s.harish2k01.xyz
 
 resources: {}
-

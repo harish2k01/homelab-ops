@@ -65,7 +65,7 @@ database:
       rootPasswordKey: db-root-password
     persistence:
       enabled: true
-      storageClassName: "nfs-csi"
+      storageClassName: "longhorn"
       accessModes:
         - ReadWriteOnce
       size: 2Gi
@@ -98,7 +98,7 @@ database:
 
 persistence:
   enabled: true
-  storageClassName: "nfs-csi"
+  storageClassName: "longhorn"
   accessModes:
     - ReadWriteOnce
   size: 2Gi

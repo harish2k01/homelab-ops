@@ -9,7 +9,7 @@ persistence:
   config:
     enabled: true
     size: 128Mi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
 
 httpRoute:
   enabled: true
@@ -21,4 +21,3 @@ httpRoute:
     - jellyseerr.k8s.harish2k01.xyz
 
 resources: {}
-

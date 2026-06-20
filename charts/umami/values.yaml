@@ -42,7 +42,7 @@ database:
       accessModes:
         - ReadWriteOnce
       size: 1Gi
-      storageClassName: nfs-csi
+      storageClassName: longhorn
     resources:
       requests:
         cpu: 100m

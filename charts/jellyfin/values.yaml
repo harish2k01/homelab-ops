@@ -13,7 +13,7 @@ persistence:
   config:
     enabled: true
     size: 32Gi
-    storageClassName: nfs-csi
+    storageClassName: longhorn
 
 media:
   enabled: true
@@ -52,4 +52,3 @@ httpRoute:
     - jellyfin.k8s.harish2k01.xyz
 
 resources: {}
-
