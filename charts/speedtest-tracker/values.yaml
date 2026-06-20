@@ -194,7 +194,7 @@ speedtestTracker:
 
   persistence:
     enabled: true
-    storageClassName: ""
+    storageClassName: longhorn
     accessModes:
       - ReadWriteOnce
     size: 1Gi

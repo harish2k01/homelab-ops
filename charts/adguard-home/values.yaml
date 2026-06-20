@@ -38,7 +38,7 @@ persistence:
   accessModes:
     - ReadWriteOnce
   size: 512Mi
-  storageClassName: longhorn-safe
+  storageClassName: longhorn
   work:
     mountPath: /opt/adguardhome/work
     subPath: work
