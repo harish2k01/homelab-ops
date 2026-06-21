@@ -10,7 +10,7 @@ spec:
   sources:
     # 🔹 Upstream Helm chart
     - repoURL: oci://ghcr.io/grafana-community/helm-charts/loki
-      targetRevision: 9.2.0
+      targetRevision: 9.5.13
       path: .
       helm:
         releaseName: loki
