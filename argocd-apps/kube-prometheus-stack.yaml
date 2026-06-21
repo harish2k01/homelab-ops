@@ -23,7 +23,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/monitoring
+      path: infra/kube-prometheus-stack
 
   destination:
     server: https://kubernetes.default.svc
