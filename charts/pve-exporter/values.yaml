@@ -6,7 +6,6 @@ proxmox:
   # One or more Proxmox API endpoints to scrape.
   targets:
     - 10.10.10.100
-    - 10.10.10.150
 
 service:
   port: 9221
