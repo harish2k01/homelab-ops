@@ -5,14 +5,17 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/harish2k01/homelab-ops
-    targetRevision: main
-    path: charts/qbittorrent-exporter
-    helm:
-      releaseName: qbittorrent-exporter
-      valueFiles:
-        - values.yaml
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: qbittorrent-exporter
+      targetRevision: 0.1.0
+      helm:
+        releaseName: qbittorrent-exporter
+        valueFiles:
+          - $values/charts/qbittorrent-exporter/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
