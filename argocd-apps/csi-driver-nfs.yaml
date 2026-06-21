@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
       chart: csi-driver-nfs
-      targetRevision: 4.13.2
+      targetRevision: 4.13.3
       helm:
         releaseName: csi-driver-nfs
         valueFiles:
