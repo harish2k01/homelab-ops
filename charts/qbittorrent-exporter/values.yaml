@@ -2,16 +2,19 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/martabal/qbittorrent-exporter
-  tag: "v1.13.4"
+  tag: "v2.0.1"
   pullPolicy: IfNotPresent
 
 qbittorrent:
   baseUrl: http://qbittorrent.media.svc.cluster.local:8080
-  username: ""
-  password: ""
-  existingSecret: "qbittorrent-exporter-auth-secret"
-  usernameSecretKey: username
-  passwordSecretKey: password
+  auth:
+    # qBittorrent 5.2.0+ requires auth.method=apiKey and an api-key entry in
+    # the existing Secret.
+    method: apiKey
+    existingSecret: qbittorrent-exporter-auth-secret
+    usernameSecretKey: username
+    passwordSecretKey: password
+    apiKeySecretKey: api-key
 
 service:
   type: ClusterIP
