@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://cloudnative-pg.io/charts
       chart: cloudnative-pg
-      targetRevision: 0.28.0
+      targetRevision: 0.28.3
       helm:
         releaseName: cloudnative-pg
         valueFiles:
