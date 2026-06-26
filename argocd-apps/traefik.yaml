@@ -12,7 +12,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://traefik.github.io/charts
       chart: traefik
-      targetRevision: 39.0.6
+      targetRevision: 41.0.0
       helm:
         releaseName: traefik
         valueFiles:
