@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://argoproj.github.io/argo-helm
       chart: argo-cd
-      targetRevision: 9.4.15
+      targetRevision: 10.0.0
       helm:
         releaseName: argocd
         valueFiles:
