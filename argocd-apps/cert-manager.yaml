@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://charts.jetstack.io
       chart: cert-manager
-      targetRevision: 1.20.0
+      targetRevision: v1.20.3
       helm:
         releaseName: cert-manager
         valueFiles:
