@@ -211,6 +211,10 @@ configs:
     ## Ref: https://argo-cd.readthedocs.io/en/latest/faq/#how-to-disable-admin-user
     admin.enabled: true
 
+    # API-only local account for GitHub Actions PR diff previews.
+    accounts.gitops-preview: apiKey
+    accounts.gitops-preview.enabled: "true"
+
     # -- Public URL used by Argo CD for redirects and generated links
     url: https://argocd.k8s.harish2k01.xyz
 
@@ -461,7 +465,8 @@ configs:
 
     # -- File containing user-defined policies and role definitions.
     # @default -- `''` (See [values.yaml])
-    policy.csv: ""
+    policy.csv: |
+      g, gitops-preview, role:readonly
     # Policy rules are in the form:
     #  p, subject, resource, action, object, effect
     # Role definitions and bindings are in the form:
