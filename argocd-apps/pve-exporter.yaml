@@ -5,14 +5,20 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/harish2k01/homelab-ops
-    targetRevision: main
-    path: charts/pve-exporter
-    helm:
-      releaseName: pve-exporter
-      valueFiles:
-        - values.yaml
+  sources:
+    - repoURL: https://harish2k01.github.io/helm-charts
+      chart: pve-exporter
+      targetRevision: 0.1.0
+      helm:
+        releaseName: pve-exporter
+        valueFiles:
+          - $values/charts/pve-exporter/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: infra/pve-exporter
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

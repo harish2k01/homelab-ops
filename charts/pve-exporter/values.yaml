@@ -1,22 +1,23 @@
 image:
   repository: prompve/prometheus-pve-exporter
   tag: "3.8.2"
+  pullPolicy: IfNotPresent
 
 proxmox:
   # One or more Proxmox API endpoints to scrape.
   targets:
     - 10.10.10.100
+  config:
+    existingSecret: pve-exporter
+    secretKey: pve.yaml
 
 service:
+  type: ClusterIP
   port: 9221
+  targetPort: 9221
 
-servicemonitor:
+serviceMonitor:
   enabled: true
   interval: 15s
   labels:
     release: kube-prometheus-stack
-
-sealedSecret:
-  enabled: true
-  encryptedData:
-    pveyaml: "AgCjVLpQ3Ftwedl6V2Ms6Iw8OWkCWIzCbL6XHPXWZDpBnsV0CF0Bp2NR6xvY7NHVrylgCrJsvcU7XsG4CBWKi68r72N4baIsC6G4evzR0duYzlHceeblDvo7ODu3ecL7u+Z2yY7NZy/jHXUxbVcAhv939U5UNHHJWjpj+VTQJ+kLG1zcWAKj0TjYB74J8LfllVjUgrUSrSyT2ae6lIXSM47uwICYRLWEm7bQW+Scu+1Jnb4eSMKPhmAlQ51Los4ZHQxhlXacpxtbb0cuOjWmI8e3qQptnUzqGeTLwqXpjy/3dnRQReoZBNuEhfromX9PNrQ+Ra18+ThH6qCekCnCJwLeOdJBuwIp6eqNhiOVGoxQclzMpob/j4eHhENtq9TqrjpxR/ar+3D2s8HaSfHFC6Lx7+p8PwqULMDfirR2hVs8O01J1OZjDOh+6rZDnIyrtm4PAdSn4dxuXlFg5wqzadk0nt5YFNZnDwLMPBoMcR2R5iSygNA3F2pXBRABZ1KhqI0g1HCBE7671ubZOdwt5VOrfkncnH8XMPVxzTUglhWNYEy4G+LVM4nyLjFKuHfO68Gj4oYTLYppERDs5JLdwWK2hHh2OXVZNX4+728EW4rFz87WzY0vytoBbdtpOMIg9k5LxzILHmMxSKpvlewATl+hfMm6Dit2/2Nx6V3j5mvbj2HePLmyZNjzL7SIxGs71FZwSJU8/5WMgdudf/FjIRlJv4OGhNIQhNUkFWKogt2f3U5CH6cfbSlaHt213bSfzb58sb8dtBiJaMA9TTxrVfg9++OpAp0GJr5FvP0="
