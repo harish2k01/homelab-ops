@@ -1,0 +1,123 @@
+name: GitOps PR Preview
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - "argocd-apps/**"
+      - "charts/**"
+      - "infra/**"
+      - "manifests/**"
+      - ".github/scripts/gitops-pr-preview.py"
+      - ".github/workflows/gitops-pr-preview.yaml"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: homelab-ops-runner
+
+    steps:
+      - name: Create friday-pa token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
+          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Checkout workflow code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: workflow
+
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ops
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Install Argo CD CLI
+        run: |
+          if command -v argocd >/dev/null 2>&1; then
+            argocd version --client
+            exit 0
+          fi
+
+          sudo curl -sSL \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+            -o /usr/local/bin/argocd
+          sudo chmod +x /usr/local/bin/argocd
+          argocd version --client
+
+      - name: Generate GitOps preview
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          ARGOCD_CORE: ${{ vars.ARGOCD_CORE }}
+          ARGOCD_GRPC_WEB: ${{ vars.ARGOCD_GRPC_WEB }}
+          ARGOCD_INSECURE: ${{ vars.ARGOCD_INSECURE }}
+          ARGOCD_PLAINTEXT: ${{ vars.ARGOCD_PLAINTEXT }}
+          ARGOCD_DIFF_REFRESH: ${{ vars.ARGOCD_DIFF_REFRESH }}
+        working-directory: ops
+        run: python ../workflow/.github/scripts/gitops-pr-preview.py --output ../gitops-preview.md
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- friday-pa:argocd-diff -->';
+            const body = fs.readFileSync('gitops-preview.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
