@@ -24,6 +24,8 @@ COMMENT_LIMIT = int(os.getenv("GITOPS_PREVIEW_COMMENT_LIMIT", "60000"))
 MAX_FILES = int(os.getenv("GITOPS_PREVIEW_MAX_FILES", "200"))
 MAX_APPS = int(os.getenv("GITOPS_PREVIEW_MAX_APPS", "30"))
 MAX_APP_DIFF_CHARS = int(os.getenv("GITOPS_PREVIEW_MAX_APP_DIFF_CHARS", "18000"))
+MAX_INPUT_DIFF_CHARS = int(os.getenv("GITOPS_PREVIEW_MAX_INPUT_DIFF_CHARS", "12000"))
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -61,14 +63,22 @@ class AppDiff:
     command: list[str]
     output: str
     notes: list[str]
+    input_diff: str = ""
 
 
-def run(args: list[str], *, cwd: Path, allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
+REASON_APPLICATION_SPEC = "Application spec changed"
+REASON_HELM_VALUES = "Helm values changed"
+
+
+def run(args: list[str], *, cwd: Path, allow_failure: bool = False, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     completed = subprocess.run(
         args,
         cwd=cwd,
+        env=env,
         check=False,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
@@ -106,6 +116,10 @@ def short_sha(value: str) -> str:
 
 def escape_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ")
+
+
+def clean_output(value: str) -> str:
+    return ANSI_RE.sub("", value).replace("\r\n", "\n").strip()
 
 
 def parse_name_status(output: str) -> list[Change]:
@@ -261,29 +275,33 @@ def map_changes_to_apps(changes: list[Change], apps: list[App]) -> dict[str, set
 
     for change in changes:
         for path in changed_paths(change):
+            path_matches: dict[str, set[str]] = defaultdict(set)
             manifest_app = apps_by_manifest.get(path)
             if manifest_app:
-                reasons[manifest_app.name].add("Application manifest changed")
+                path_matches[manifest_app.name].add(REASON_APPLICATION_SPEC)
             elif path.startswith("argocd-apps/") and path.endswith((".yaml", ".yml")):
                 name = Path(path).stem
                 if name in apps_by_name:
-                    reasons[name].add("Application manifest changed")
+                    path_matches[name].add(REASON_APPLICATION_SPEC)
                 else:
-                    reasons[name].add("Application manifest changed")
+                    path_matches[name].add(REASON_APPLICATION_SPEC)
 
             for app in apps:
                 for source in app.sources:
                     if source.current_repo and source.path and is_under(path, source.path):
-                        reasons[app.name].add(f"source path `{source_label(source)}` changed")
+                        path_matches[app.name].add(f"`{source_label(source)}` source changed")
 
                 if path in app_value_paths[app.name]:
-                    reasons[app.name].add("Helm value file changed")
+                    path_matches[app.name].add(REASON_HELM_VALUES)
 
             parts = path.split("/")
             if len(parts) >= 2 and parts[0] in {"charts", "infra", "manifests"}:
                 name = parts[1]
-                if name in apps_by_name:
-                    reasons[name].add(f"`{parts[0]}/{name}` changed")
+                if name in apps_by_name and name not in path_matches:
+                    path_matches[name].add(f"`{parts[0]}/{name}` files changed")
+
+            for app_name, app_reasons in path_matches.items():
+                reasons[app_name].update(app_reasons)
 
     return reasons
 
@@ -337,8 +355,8 @@ def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_dif
         notes.append("Application is not present in the PR head checkout; live diff was skipped.")
         return AppDiff(app=app, status="skipped", summary="app missing from PR head", command=[], output="", notes=notes)
 
-    if any("Application manifest" in reason for reason in reasons):
-        notes.append("The Application manifest changed. `argocd app diff` uses the live Application spec, so source/destination changes may need manual review.")
+    if REASON_APPLICATION_SPEC in reasons:
+        notes.append("The Application spec changed. `argocd app diff` uses the live Application spec, so source, chart, and destination changes may not appear in the rendered child-resource diff.")
 
     if not can_diff:
         return AppDiff(app=app, status="skipped", summary=skip_reason, command=[], output="", notes=notes)
@@ -352,8 +370,12 @@ def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_dif
         "--exit-code=false",
         *revision_args(app, head_sha),
     ]
-    completed = run(command, cwd=repo, allow_failure=True)
-    output = completed.stdout.strip()
+    env = os.environ.copy()
+    env.setdefault("KUBECTL_EXTERNAL_DIFF", "diff -u -N")
+    env.setdefault("NO_COLOR", "1")
+    env.setdefault("TERM", "dumb")
+    completed = run(command, cwd=repo, allow_failure=True, env=env)
+    output = clean_output(completed.stdout)
 
     if completed.returncode not in {0, 1}:
         return AppDiff(
@@ -366,9 +388,10 @@ def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_dif
         )
 
     if output:
-        return AppDiff(app=app, status="changed", summary="changes detected", command=command, output=output, notes=notes)
+        return AppDiff(app=app, status="changed", summary="rendered Kubernetes changes", command=command, output=output, notes=notes)
 
-    return AppDiff(app=app, status="clean", summary="no rendered diff", command=command, output="", notes=notes)
+    notes.append("Argo CD returned an empty diff. The PR still maps to this app, but Argo CD did not render child-resource changes for the requested revision.")
+    return AppDiff(app=app, status="clean", summary="no rendered Kubernetes changes", command=command, output="", notes=notes)
 
 
 def truncate(text: str, limit: int) -> str:
@@ -403,6 +426,40 @@ def status_label(status: str) -> str:
     }.get(status, status.lower())
 
 
+def diff_result_label(diff: AppDiff | None) -> str:
+    if not diff:
+        return "not evaluated"
+    if diff.status == "changed":
+        return "rendered changes"
+    if diff.status == "clean":
+        return "no rendered changes"
+    if diff.status == "error":
+        return "error"
+    return diff.summary
+
+
+def diff_counts(app_diffs: list[AppDiff]) -> dict[str, int]:
+    counts = {"changed": 0, "clean": 0, "skipped": 0, "error": 0}
+    for diff in app_diffs:
+        counts[diff.status] = counts.get(diff.status, 0) + 1
+    return counts
+
+
+def app_change_paths(app: App, changes: list[Change], reasons: set[str]) -> list[str]:
+    paths: set[str] = set()
+    for change in changes:
+        if any(path_reason_matches(change, reason, app) for reason in reasons):
+            paths.update(changed_paths(change))
+    return sorted(paths)
+
+
+def git_input_diff(repo: Path, base_sha: str, head_sha: str, paths: list[str]) -> str:
+    if not paths:
+        return ""
+    output = git(["diff", "--no-color", "--find-renames", base_sha, head_sha, "--", *paths], cwd=repo, allow_failure=True)
+    return clean_output(output)
+
+
 def build_markdown(
     *,
     base_sha: str,
@@ -415,6 +472,7 @@ def build_markdown(
 ) -> str:
     app_by_name = {app.name: app for app in apps}
     changed_app_names = sorted(reasons)
+    counts = diff_counts(app_diffs)
     file_rows: list[str] = []
 
     for change in changes[:MAX_FILES]:
@@ -431,17 +489,29 @@ def build_markdown(
 
     lines: list[str] = [
         COMMENT_MARKER,
-        "### GitOps Preview",
+        "## GitOps PR Preview",
         "",
-        f"Base: `{short_sha(base_sha)}`",
-        f"Head: `{short_sha(head_sha)}`",
+        "| Base | Head | Workflow |",
+        "|---|---|---|",
+        f"| `{short_sha(base_sha)}` | `{short_sha(head_sha)}` | {f'[logs]({workflow_url})' if workflow_url else '-'} |",
     ]
-    if workflow_url:
-        lines.append(f"Run: [workflow logs]({workflow_url})")
-    lines.extend(["", "#### Changed files", "", "| Status | Path | Impacted apps |", "|---|---|---|"])
-    lines.extend(file_rows or ["| - | No GitOps file changes detected | - |"])
-
-    lines.extend(["", "#### Impacted Argo CD apps", "", "| App | Namespace | Why | Diff |", "|---|---|---|---|"])
+    lines.extend(
+        [
+            "",
+            "### Summary",
+            "",
+            "| Changed files | Candidate apps | Rendered changes | No rendered changes | Skipped | Errors |",
+            "|---:|---:|---:|---:|---:|---:|",
+            f"| {len(changes)} | {len(changed_app_names)} | {counts.get('changed', 0)} | {counts.get('clean', 0)} | {counts.get('skipped', 0)} | {counts.get('error', 0)} |",
+            "",
+            "> Candidate app means a changed file is referenced by an Argo CD Application or matches that app's repo path. It does not guarantee a rendered Kubernetes diff.",
+            "",
+            "### Candidate Applications",
+            "",
+            "| App | Namespace | Changed inputs | Rendered child resources |",
+            "|---|---|---|---|",
+        ]
+    )
 
     diff_by_app = {item.app.name: item for item in app_diffs}
     for app_name in changed_app_names[:MAX_APPS]:
@@ -449,23 +519,45 @@ def build_markdown(
         diff = diff_by_app.get(app_name)
         namespace = app.namespace if app else ""
         reason = "<br>".join(sorted(reasons[app_name]))
-        diff_status = diff.summary if diff else "not evaluated"
-        lines.append(f"| `{escape_cell(app_name)}` | `{escape_cell(namespace or '-')}` | {reason} | {diff_status} |")
+        lines.append(f"| `{escape_cell(app_name)}` | `{escape_cell(namespace or '-')}` | {reason} | {diff_result_label(diff)} |")
 
     if len(changed_app_names) > MAX_APPS:
         lines.append(f"| ... | ... | {len(changed_app_names) - MAX_APPS} more apps omitted | ... |")
 
     if not changed_app_names:
-        lines.append("| - | - | No impacted app detected | - |")
+        lines.append("| - | - | No candidate app detected | - |")
+
+    lines.extend(
+        [
+            "",
+            "<details open>",
+            f"<summary>Changed GitOps files ({len(changes)})</summary>",
+            "",
+            "| Status | Path | Candidate apps |",
+            "|---|---|---|",
+        ]
+    )
+    lines.extend(file_rows or ["| - | No GitOps file changes detected | - |"])
+    lines.extend(["", "</details>"])
 
     for diff in app_diffs[:MAX_APPS]:
-        lines.extend(["", "<details>", f"<summary>{escape_cell(diff.app.name)}: {escape_cell(diff.summary)}</summary>", ""])
+        lines.extend(["", "<details>", f"<summary>{escape_cell(diff.app.name)} - {escape_cell(diff.summary)}</summary>", ""])
+        app_reasons = sorted(reasons.get(diff.app.name, []))
+        if app_reasons:
+            lines.extend(["Changed inputs:", ""])
+            for reason in app_reasons:
+                lines.append(f"- {reason}")
         for note in diff.notes:
+            if app_reasons:
+                lines.append("")
             lines.append(f"> {note}")
+            app_reasons = []
         if diff.command:
             lines.extend(["", "Command:", "", f"`{command_for_display(diff.command)}`"])
         if diff.output:
-            lines.extend(["", "```diff", truncate(diff.output.replace("```", "` ` `"), MAX_APP_DIFF_CHARS), "```"])
+            lines.extend(["", "Rendered Kubernetes diff:", "", "```diff", truncate(diff.output.replace("```", "` ` `"), MAX_APP_DIFF_CHARS), "```"])
+        if diff.input_diff:
+            lines.extend(["", "Git input patch:", "", "```diff", truncate(diff.input_diff.replace("```", "` ` `"), MAX_INPUT_DIFF_CHARS), "```"])
         lines.extend(["", "</details>"])
 
     return truncate("\n".join(lines).rstrip() + "\n", COMMENT_LIMIT)
@@ -477,14 +569,19 @@ def path_reason_matches(change: Change, reason: str, app: App | None) -> bool:
     paths = changed_paths(change)
     if "Application manifest" in reason:
         return app.manifest_path in paths
+    if reason == REASON_APPLICATION_SPEC:
+        return app.manifest_path in paths
     if "Helm value file" in reason:
         values = helm_value_paths(app)
         return any(path in values for path in paths)
-    if reason.startswith("source path"):
+    if reason == REASON_HELM_VALUES:
+        values = helm_value_paths(app)
+        return any(path in values for path in paths)
+    if reason.endswith("source changed"):
         for source in app.sources:
             if source.current_repo and source.path and any(is_under(path, source.path) for path in paths):
                 return True
-    match = re.match(r"`([^`]+)` changed", reason)
+    match = re.match(r"`([^`]+)` files changed", reason)
     if match:
         prefix = match.group(1)
         return any(is_under(path, prefix) for path in paths)
@@ -525,7 +622,9 @@ def main() -> int:
         app = next((item for item in apps if item.name == app_name), None)
         if not app:
             continue
-        app_diffs.append(run_app_diff(repo, app, args.head, reasons[app_name], can_diff, skip_reason))
+        app_diff = run_app_diff(repo, app, args.head, reasons[app_name], can_diff, skip_reason)
+        app_diff.input_diff = git_input_diff(repo, args.base, args.head, app_change_paths(app, changes, reasons[app_name]))
+        app_diffs.append(app_diff)
 
     run_id = os.getenv("GITHUB_RUN_ID")
     server_url = os.getenv("GITHUB_SERVER_URL", "https://github.com")

@@ -10,7 +10,7 @@ spec:
   sources:
     # 🔹 Upstream Helm chart
     - repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
-      targetRevision: 0.14.2
+      targetRevision: 0.14.0
       path: .
       helm:
         releaseName: arc-runner-set
