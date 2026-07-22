@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://grafana.github.io/helm-charts
       chart: alloy
-      targetRevision: 1.6.2
+      targetRevision: 1.11.0
       helm:
         releaseName: alloy
         valueFiles:
