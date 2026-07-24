@@ -21,8 +21,8 @@ The cluster is managed with a declarative GitOps workflow:
 .
 |-- argocd-apps/   # Argo CD Application manifests
 |-- charts/        # Helm values files and local Helm charts
-|-- infra/         # Kustomize-managed cluster resources
-|-- manifests/     # Standalone manifests consumed by selected apps
+|-- infra/         # Shared Kustomize-managed cluster resources
+|-- manifests/     # App-specific Kustomize and standalone manifests
 `-- README.md
 ```
 

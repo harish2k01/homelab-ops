@@ -23,7 +23,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/speedtest-tracker
+      path: manifests/speedtest-tracker
 
   destination:
     server: https://kubernetes.default.svc

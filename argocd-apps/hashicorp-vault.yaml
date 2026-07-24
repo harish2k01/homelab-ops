@@ -1,33 +1,33 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: immich
+  name: hashicorp-vault
   namespace: argocd
 
 spec:
   project: default
 
   sources:
-    # 🔹 Upstream Helm chart
-    - repoURL: https://immich-app.github.io/immich-charts
-      chart: immich
-      targetRevision: 0.11.1
+    # Upstream Helm chart
+    - repoURL: https://helm.releases.hashicorp.com
+      chart: vault
+      targetRevision: 0.34.0
       helm:
-        releaseName: immich
+        releaseName: vault
         valueFiles:
-          - $values/charts/immich/values.yaml
+          - $values/charts/hashicorp-vault/values.yaml
 
-    # 🔹 Your Git repo (values source)
+    # Git repository containing the values and HTTPRoute
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: manifests/immich
+      path: manifests/hashicorp-vault
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: immich
+    namespace: hashicorp-vault
 
   syncPolicy:
     automated:

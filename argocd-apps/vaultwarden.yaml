@@ -18,7 +18,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/vaultwarden
+      path: manifests/vaultwarden
   destination:
     server: https://kubernetes.default.svc
     namespace: vaultwarden

@@ -24,7 +24,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/traefik
+      path: manifests/traefik
 
   destination:
     server: https://kubernetes.default.svc
