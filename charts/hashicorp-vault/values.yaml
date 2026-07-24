@@ -920,10 +920,9 @@ server:
         tls_disable = 1
         address = "[::]:8200"
         cluster_address = "[::]:8201"
-        # Enable unauthenticated metrics access (necessary for Prometheus Operator)
-        #telemetry {
-        #  unauthenticated_metrics_access = "true"
-        #}
+        telemetry {
+          unauthenticated_metrics_access = "true"
+        }
       }
       storage "file" {
         path = "/vault/data"
@@ -939,11 +938,10 @@ server:
       #   crypto_key  = "vault-helm-unseal-key"
       #}
 
-      # Example configuration for enabling Prometheus metrics in your config.
-      #telemetry {
-      #  prometheus_retention_time = "30s"
-      #  disable_hostname = true
-      #}
+      telemetry {
+        prometheus_retention_time = "30s"
+        disable_hostname = true
+      }
 
   # Run Vault in "HA" mode. There are no storage requirements unless the audit log
   # persistence is required.  In HA mode Vault will configure itself to use Consul
@@ -1395,12 +1393,13 @@ serverTelemetry:
     #  https://github.com/prometheus-operator/kube-prometheus
 
     # Enable deployment of the Vault Server ServiceMonitor CustomResource.
-    enabled: false
+    enabled: true
 
     # Selector labels to add to the ServiceMonitor.
     # When empty, defaults to:
     #  release: prometheus
-    selectors: {}
+    selectors:
+      release: kube-prometheus-stack
 
     # Interval at which Prometheus scrapes metrics
     interval: 30s
