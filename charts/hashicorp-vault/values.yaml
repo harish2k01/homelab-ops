@@ -914,6 +914,7 @@ server:
     # https://developer.hashicorp.com/vault/docs/platform/k8s/helm/run#protecting-sensitive-vault-configurations
     config: |-
       ui = true
+      api_addr = "https://hashicorp-vault.k8s.harish2k01.xyz"
 
       listener "tcp" {
         tls_disable = 1
@@ -956,7 +957,7 @@ server:
     # Set the api_addr configuration for Vault HA
     # See https://developer.hashicorp.com/vault/docs/configuration#api_addr
     # If set to null, this will be set to the Pod IP Address
-    apiAddr: null
+    apiAddr: "https://hashicorp-vault.k8s.harish2k01.xyz"
 
     # Set the cluster_addr configuration for Vault HA
     # See https://developer.hashicorp.com/vault/docs/configuration#cluster_addr
