@@ -18,7 +18,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/ghost
+      path: manifests/ghost
   destination:
     server: https://kubernetes.default.svc
     namespace: ghost

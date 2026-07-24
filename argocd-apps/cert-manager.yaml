@@ -23,7 +23,7 @@ spec:
       ref: values
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: infra/cert-manager
+      path: manifests/cert-manager
 
   destination:
     server: https://kubernetes.default.svc
