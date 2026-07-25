@@ -66,6 +66,7 @@ class AppDiff:
     status: str
     summary: str
     output: str
+    input_diffs: list[tuple[str, str]] = dataclasses.field(default_factory=list)
 
 
 REASON_APPLICATION_SPEC = "Application spec changed"
@@ -582,6 +583,83 @@ def truncate(text: str, limit: int) -> str:
     return text[:limit] + f"\n\n... truncated {len(text) - limit} characters ..."
 
 
+def change_affects_app_input(change: Change, app: App) -> bool:
+    paths = changed_paths(change)
+    if app.manifest_path in paths:
+        return True
+
+    value_paths = helm_value_paths(app)
+    if any(path in value_paths for path in paths):
+        return True
+
+    for source in app.sources:
+        if source.current_repo and source.path:
+            if any(is_under(path, source.path) for path in paths):
+                return True
+
+    for path in paths:
+        parts = path.split("/")
+        if len(parts) >= 2 and parts[0] in {"charts", "infra", "manifests"}:
+            if parts[1] == app.name:
+                return True
+    return False
+
+
+def app_input_diffs(
+    repo: Path,
+    base_sha: str,
+    head_sha: str,
+    app: App,
+    changes: list[Change],
+) -> list[tuple[str, str]]:
+    input_diffs: list[tuple[str, str]] = []
+    for change in changes:
+        if not change_affects_app_input(change, app):
+            continue
+        paths = changed_paths(change)
+        output = git(
+            [
+                "diff",
+                "--no-color",
+                "--no-ext-diff",
+                "--unified=3",
+                base_sha,
+                head_sha,
+                "--",
+                *paths,
+            ],
+            cwd=repo,
+            allow_failure=True,
+        )
+        output = clean_output(output)
+        if not output:
+            continue
+        label = change.path if not change.old_path else f"{change.old_path} -> {change.path}"
+        input_diffs.append((label, output))
+    return input_diffs
+
+
+def input_diff_blocks(diff: AppDiff, total_limit: int) -> list[str]:
+    if not diff.input_diffs:
+        return []
+
+    per_file_limit = max(300, total_limit // len(diff.input_diffs))
+    lines = ["Changed GitOps inputs:", ""]
+    for path, output in diff.input_diffs:
+        safe_output = output.replace("```", "` ` `")
+        lines.extend(
+            [
+                f"`{path}`",
+                "",
+                "```diff",
+                truncate(safe_output, per_file_limit),
+                "```",
+                "",
+            ]
+        )
+    return lines[:-1]
+
+
 def diff_result_label(diff: AppDiff | None) -> str:
     if not diff:
         return "not evaluated"
@@ -590,6 +668,8 @@ def diff_result_label(diff: AppDiff | None) -> str:
     if diff.status == "created":
         return "resources to be created"
     if diff.status == "clean":
+        if diff.input_diffs:
+            return "GitOps inputs changed; no rendered changes"
         return "no rendered changes"
     if diff.status == "error":
         return "error"
@@ -636,18 +716,29 @@ def build_markdown(
     )
     for diff in existing_app_diffs[:MAX_APPS]:
         lines.extend(["", "<details>", f"<summary>{escape_cell(diff.app.name)} - {escape_cell(diff.summary)}</summary>", ""])
+        input_limit = 0
+        if diff.input_diffs:
+            input_limit = (
+                per_app_limit
+                if not diff.output
+                else min(12000, max(1000, per_app_limit // 2))
+            )
+            lines.extend(input_diff_blocks(diff, input_limit))
         if diff.output:
             fence = "diff" if diff.status in {"changed", "created"} else "text"
             safe_output = diff.output.replace("```", "` ` `")
-            lines.extend([f"```{fence}", truncate(safe_output, per_app_limit), "```"])
-            if len(safe_output) > per_app_limit:
+            output_limit = max(1000, per_app_limit - input_limit)
+            if diff.input_diffs:
+                lines.extend(["", "Rendered Kubernetes diff:", ""])
+            lines.extend([f"```{fence}", truncate(safe_output, output_limit), "```"])
+            if len(safe_output) > output_limit:
                 lines.extend(
                     [
                         "",
                         f"[Download the complete rendered output]({ARTIFACT_URL_PLACEHOLDER})",
                     ]
                 )
-        else:
+        elif not diff.input_diffs:
             lines.append(diff.summary.capitalize() + ".")
         lines.extend(["", "</details>"])
 
@@ -657,19 +748,25 @@ def build_markdown(
 def build_new_app_markdown(diff: AppDiff) -> str:
     marker = f"<!-- friday-pa:argocd-new-app:{diff.app.name} -->"
     fence = "diff" if diff.status == "created" else "text"
-    prefix = "\n".join(
+    prefix_lines = [
+        marker,
+        f"## New Argo CD Application: `{diff.app.name}`",
+        "",
+        f"Namespace: `{diff.app.namespace or '-'}`",
+        "",
+    ]
+    if diff.input_diffs:
+        prefix_lines.extend(input_diff_blocks(diff, 8000))
+        prefix_lines.append("")
+    prefix_lines.extend(
         [
-            marker,
-            f"## New Argo CD Application: `{diff.app.name}`",
-            "",
-            f"Namespace: `{diff.app.namespace or '-'}`",
-            "",
             "<details open>",
             f"<summary>{escape_cell(diff.summary.capitalize())}</summary>",
             "",
             f"```{fence}",
         ]
     )
+    prefix = "\n".join(prefix_lines)
     plain_suffix = "\n```\n\n</details>\n"
     artifact_suffix = (
         "\n```\n\n"
@@ -743,6 +840,15 @@ def main() -> int:
             skip_reason,
             is_new=app.name not in base_app_names,
         )
+        app_diff.input_diffs = app_input_diffs(
+            repo,
+            args.base,
+            args.head,
+            app,
+            changes,
+        )
+        if app_diff.input_diffs and app_diff.status == "clean":
+            app_diff.summary = "GitOps inputs changed; no rendered Kubernetes changes"
         app_diffs.append(app_diff)
 
     output_dir = Path(args.output_dir)
