@@ -16,6 +16,8 @@ jobs:
   preview:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: homelab-ops-runner
+    outputs:
+      apply_required: ${{ steps.changes.outputs.apply_required }}
 
     steps:
       - name: Detect GitOps changes
@@ -37,10 +39,17 @@ jobs:
               'infra/',
               'manifests/',
             ];
-            const required = files.some((file) =>
-              gitopsPrefixes.some((prefix) => file.filename.startsWith(prefix)),
+            const changedPaths = files.flatMap((file) =>
+              [file.filename, file.previous_filename].filter(Boolean),
+            );
+            const required = changedPaths.some((path) =>
+              gitopsPrefixes.some((prefix) => path.startsWith(prefix)),
+            );
+            const applyRequired = changedPaths.some((path) =>
+              path.startsWith('argocd-apps/'),
             );
             core.setOutput('required', String(required));
+            core.setOutput('apply_required', String(applyRequired));
             if (!required) {
               core.notice('No GitOps files changed; preview generation is not required.');
             }
@@ -206,3 +215,12 @@ jobs:
                 });
               }
             }
+
+  apply:
+    name: deploy
+    needs: preview
+    if: >-
+      needs.preview.result == 'success' &&
+      needs.preview.outputs.apply_required == 'true'
+    uses: ./.github/workflows/gitops-pr-apply.yaml
+    secrets: inherit

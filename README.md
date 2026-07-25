@@ -131,10 +131,13 @@ preview comment.
 
 For GitOps changes, `friday-pa` maintains a sticky PR comment:
 
-- Existing Applications receive a concise rendered Kubernetes diff
-- New Applications receive a separate comment containing the rendered resources
+- Existing Applications show a separate diff for every changed Application,
+  values, manifest, or chart input, followed by a concise rendered Kubernetes diff
+- New Applications receive a separate comment containing the changed input-file
+  diffs and rendered resources
 - Renders that exceed the GitHub comment limit are attached as workflow artifacts
 - Changed values and repository paths are mapped back to their affected Applications
+- The deployment workflow starts only after the mandatory preview check succeeds
 
 ### 🚀 Reviewer-approved apply
 
