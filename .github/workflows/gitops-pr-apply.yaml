@@ -1,0 +1,410 @@
+name: GitOps PR Apply
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - closed
+    paths:
+      - "argocd-apps/**"
+
+concurrency:
+  group: gitops-pr-apply-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  request:
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: homelab-ops-runner
+    outputs:
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      number: ${{ steps.pr.outputs.number }}
+      app_count: ${{ steps.comment.outputs.app_count }}
+
+    steps:
+      - name: Validate deployment request
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.issue.number;
+            const { data: pull } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number,
+            });
+
+            if (pull.state !== 'open') {
+              core.setFailed(`PR #${pull_number} is no longer open`);
+              return;
+            }
+            if (pull.head.repo.full_name !== `${owner}/${repo}`) {
+              core.setFailed('Deployments from forked pull requests are not allowed');
+              return;
+            }
+
+            core.setOutput('base_sha', pull.base.sha);
+            core.setOutput('head_sha', pull.head.sha);
+            core.setOutput('number', String(pull.number));
+
+      - name: Checkout trusted workflow code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr.outputs.base_sha }}
+          path: workflow
+
+      - name: Checkout PR revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr.outputs.head_sha }}
+          path: ops
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Prepare deployment request
+        env:
+          GITHUB_BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          GITHUB_PR_NUMBER: ${{ steps.pr.outputs.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        working-directory: ops
+        run: python ../workflow/.github/scripts/gitops-pr-apply.py --dry-run
+
+      - name: Create friday-pa token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
+          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Post deployment approval request
+        id: comment
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- friday-pa:argocd-apply -->';
+            const metadata = JSON.parse(
+              fs.readFileSync('ops/gitops-pr-apply-metadata.json', 'utf8'),
+            );
+            const escapeCell = (value) =>
+              String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
+            const status = metadata.applications.length
+              ? 'Waiting for `olympus` approval'
+              : 'No pre-merge deployment required';
+            const lines = [
+              marker,
+              '## Argo CD Deployment',
+              '',
+              `**Status:** ${status}`,
+              `**Revision:** \`${process.env.HEAD_SHA.slice(0, 12)}\``,
+              '',
+              '| Application | Namespace | Changes | PR sources pinned |',
+              '|---|---|---|---:|',
+            ];
+
+            for (const app of metadata.applications) {
+              lines.push(
+                `| \`${escapeCell(app.name)}\` | \`${escapeCell(app.namespace)}\` | ` +
+                `${app.reasons.map(escapeCell).join('<br>')} | ${app.pinnedSources} |`,
+              );
+            }
+            if (!metadata.applications.length) {
+              lines.push('| - | - | No deployable Application remains in the PR head | - |');
+            }
+            if (metadata.deferredDeletions.length) {
+              lines.push(
+                '',
+                `Application deletions deferred until merge: ` +
+                metadata.deferredDeletions.map((name) => `\`${name}\``).join(', '),
+              );
+            }
+            if (metadata.applications.length) {
+              lines.push(
+                '',
+                '> This deployment is optional. Approve the `olympus` environment to deploy now, ' +
+                'or merge/close the PR without approval to skip it.',
+              );
+            }
+
+            const body = `${lines.join('\n')}\n`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) => comment.body && comment.body.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+            core.setOutput('app_count', String(metadata.applications.length));
+
+  deploy:
+    needs: request
+    if: needs.request.outputs.app_count != '0'
+    runs-on: homelab-ops-runner
+    environment:
+      name: olympus
+    outputs:
+      started: ${{ steps.started.outputs.value }}
+
+    steps:
+      - name: Record approval
+        id: started
+        run: echo "value=true" >> "$GITHUB_OUTPUT"
+
+      - name: Revalidate approved PR revision
+        id: pr
+        uses: actions/github-script@v7
+        env:
+          APPROVED_HEAD_SHA: ${{ needs.request.outputs.head_sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.issue.number;
+            const { data: pull } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number,
+            });
+
+            if (pull.state !== 'open') {
+              core.setFailed(`PR #${pull_number} is no longer open`);
+              return;
+            }
+            if (pull.head.sha !== process.env.APPROVED_HEAD_SHA) {
+              core.setFailed(
+                `PR head changed while approval was pending: ` +
+                `expected ${process.env.APPROVED_HEAD_SHA}, current ${pull.head.sha}`,
+              );
+              return;
+            }
+
+            core.setOutput('base_sha', pull.base.sha);
+            core.setOutput('head_sha', pull.head.sha);
+
+      - name: Checkout trusted workflow code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr.outputs.base_sha }}
+          path: workflow
+
+      - name: Checkout approved PR revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr.outputs.head_sha }}
+          path: ops
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Install Argo CD CLI
+        run: |
+          if command -v argocd >/dev/null 2>&1; then
+            argocd version --client
+            exit 0
+          fi
+
+          sudo curl -sSL \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
+            -o /usr/local/bin/argocd
+          sudo chmod +x /usr/local/bin/argocd
+          argocd version --client
+
+      - name: Apply approved Applications
+        env:
+          GITHUB_BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          GITHUB_PR_NUMBER: ${{ needs.request.outputs.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_DEPLOY_AUTH_TOKEN }}
+          ARGOCD_GRPC_WEB: ${{ vars.ARGOCD_GRPC_WEB }}
+          ARGOCD_INSECURE: ${{ vars.ARGOCD_INSECURE }}
+          ARGOCD_PLAINTEXT: ${{ vars.ARGOCD_PLAINTEXT }}
+        working-directory: ops
+        run: |
+          set -o pipefail
+          python ../workflow/.github/scripts/gitops-pr-apply.py 2>&1 \
+            | tee ../gitops-pr-apply.log
+
+      - name: Upload deployment output
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: gitops-pr-apply-${{ needs.request.outputs.number }}-${{ needs.request.outputs.head_sha }}
+          path: |
+            ops/gitops-pr-apply-output
+            gitops-pr-apply.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+  report:
+    needs:
+      - request
+      - deploy
+    if: >-
+      always() &&
+      needs.request.result == 'success' &&
+      needs.request.outputs.app_count != '0'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create friday-pa token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
+          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Report deployment result
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          DEPLOY_STARTED: ${{ needs.deploy.outputs.started }}
+          APP_COUNT: ${{ needs.request.outputs.app_count }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const marker = '<!-- friday-pa:argocd-apply -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) => comment.body && comment.body.includes(marker),
+            );
+            if (!existing) {
+              core.setFailed('Argo CD deployment comment was not found');
+              return;
+            }
+
+            const runUrl =
+              `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            let status;
+            let result;
+            if (process.env.DEPLOY_RESULT === 'success') {
+              status = 'Deployed successfully';
+              result =
+                `${process.env.APP_COUNT} Application(s) synced and passed Argo CD health checks.`;
+            } else if (process.env.DEPLOY_STARTED === 'true') {
+              status = 'Deployment failed';
+              result = `Approval completed, but the Argo CD deployment failed. [View workflow](${runUrl})`;
+            } else {
+              status = 'Deployment skipped';
+              result = 'The `olympus` approval was rejected or not granted; no deployment was performed.';
+            }
+
+            let body = existing.body.replace(/^\*\*Status:\*\*.*$/m, `**Status:** ${status}`);
+            body = body.replace(/\n\*\*Result:\*\*.*$/m, '');
+            body = `${body.trim()}\n\n**Result:** ${result}\n`;
+            await github.rest.issues.updateComment({
+              owner,
+              repo,
+              comment_id: existing.id,
+              body,
+            });
+
+  close:
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create friday-pa token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
+          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Mark an unapproved deployment as skipped
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const marker = '<!-- friday-pa:argocd-apply -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) => comment.body && comment.body.includes(marker),
+            );
+            if (!existing || !existing.body.includes('Waiting for `olympus` approval')) {
+              return;
+            }
+
+            let body = existing.body.replace(
+              /^\*\*Status:\*\*.*$/m,
+              '**Status:** Deployment skipped',
+            );
+            body = `${body.trim()}\n\n**Result:** PR merged or closed without deployment approval.\n`;
+            await github.rest.issues.updateComment({
+              owner,
+              repo,
+              comment_id: existing.id,
+              body,
+            });
