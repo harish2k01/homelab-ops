@@ -19,6 +19,7 @@ The cluster is managed with a declarative GitOps workflow:
 
 ```text
 .
+|-- .github/       # GitHub Actions workflows and GitOps preview/apply scripts
 |-- argocd-apps/   # Argo CD Application manifests
 |-- charts/        # Helm values files and local Helm charts
 |-- infra/         # Shared Kustomize-managed cluster resources
@@ -108,6 +109,56 @@ Local workloads are deployed directly from charts in this repository, including 
 - `charts/qbittorrent-exporter`
 
 Infrastructure resources are reconciled through the `infra` Argo CD application, which points at the `infra/` Kustomize root.
+
+## 🔍 Pull Request Workflow
+
+GitOps pull requests are checked by two GitHub Actions workflows running on the
+self-hosted `homelab-ops-runner`.
+
+### 👀 GitOps preview
+
+`GitOps PR Preview` keeps the required `preview` check available on every pull
+request. It only performs Argo CD analysis when the PR changes files under:
+
+- `argocd-apps/`
+- `charts/`
+- `infra/`
+- `manifests/`
+
+Changes under `.github/` are ignored by the GitOps analysis. A workflow-only PR
+therefore completes the mandatory `preview` check without creating an Argo CD
+preview comment.
+
+For GitOps changes, `friday-pa` maintains a sticky PR comment:
+
+- Existing Applications receive a concise rendered Kubernetes diff
+- New Applications receive a separate comment containing the rendered resources
+- Renders that exceed the GitHub comment limit are attached as workflow artifacts
+- Changed values and repository paths are mapped back to their affected Applications
+
+### 🚀 Reviewer-approved apply
+
+When a PR adds or changes a file under `argocd-apps/`, `GitOps PR Apply`
+automatically:
+
+1. Determines every affected Application.
+2. Posts a sticky `friday-pa` deployment comment with the Application names,
+   namespaces, change reasons, and proposed PR revision.
+3. Waits for approval through the GitHub environment named `olympus`.
+
+Approval pins this repository's Application sources to the exact PR head commit,
+while preserving external Helm chart versions. The workflow then upserts each
+Application, starts an Argo CD sync, and waits for the Application to become
+synced and healthy.
+
+The deployment comment is updated with the result:
+
+- `Deployed successfully` when every Application passes sync and health checks
+- `Deployment failed` when validation, apply, sync, or health checks fail
+- `Deployment skipped` when approval is rejected or the PR is merged or closed
+  without approval
+
+This deployment is optional.
 
 ## 🏗️ Infrastructure
 
