@@ -555,7 +555,7 @@ def run_app_diff(
     env = os.environ.copy()
     env["KUBECTL_EXTERNAL_DIFF"] = os.getenv(
         "GITOPS_PREVIEW_EXTERNAL_DIFF",
-        "diff -u -N -U1000000",
+        "diff -u -N",
     )
     env.setdefault("NO_COLOR", "1")
     env.setdefault("TERM", "dumb")
