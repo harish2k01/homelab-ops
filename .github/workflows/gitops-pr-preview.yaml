@@ -12,8 +12,6 @@ on:
       - "charts/**"
       - "infra/**"
       - "manifests/**"
-      - ".github/scripts/gitops-pr-preview.py"
-      - ".github/workflows/gitops-pr-preview.yaml"
 
 permissions:
   contents: read

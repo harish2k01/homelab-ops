@@ -712,7 +712,11 @@ def main() -> int:
 
     current_repo_urls = {normalize_repo_url(f"https://github.com/{args.repo}")}
     diff_output = git(["diff", "--name-status", "--find-renames", args.base, args.head], cwd=repo)
-    changes = parse_name_status(diff_output)
+    changes = [
+        change
+        for change in parse_name_status(diff_output)
+        if not all(is_under(path, ".github") for path in changed_paths(change))
+    ]
 
     head_apps = load_apps_from_worktree(repo, current_repo_urls)
     base_apps = load_apps_from_git(repo, args.base, current_repo_urls)
