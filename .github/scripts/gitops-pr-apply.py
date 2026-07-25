@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -37,6 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=int, default=900, help="Seconds to wait for each Application.")
     parser.add_argument("--dry-run", action="store_true", help="Generate pinned Application files without deploying.")
     parser.add_argument("--output-dir", default="gitops-pr-apply-output", help="Dry-run output directory.")
+    parser.add_argument(
+        "--metadata-output",
+        default="gitops-pr-apply-metadata.json",
+        help="JSON summary used by the PR deployment comment.",
+    )
     return parser.parse_args()
 
 
@@ -140,11 +145,8 @@ def main() -> int:
 
     if removed_apps:
         print("Application deletions are not performed before merge: " + ", ".join(removed_apps))
-    if not selected_apps:
-        print("No new or changed Applications need to be deployed.")
-        return 0
 
-    if not args.dry_run:
+    if selected_apps and not args.dry_run:
         available, unavailable_reason = preview.argo_available()
         if not available:
             print(unavailable_reason, file=sys.stderr)
@@ -155,40 +157,61 @@ def main() -> int:
     for old_manifest in output_dir.glob("*.yaml"):
         old_manifest.unlink()
 
-    with tempfile.TemporaryDirectory(prefix="gitops-pr-apply-") as temp_name:
-        temp_dir = Path(temp_name)
-        for app in selected_apps:
-            source_path = repo / app.manifest_path
-            document = preview.load_yaml_document(source_path.read_text(encoding="utf-8"))
-            if not document:
-                raise ValueError(f"Unable to parse Application manifest: {app.manifest_path}")
+    generated_apps: list[tuple[str, Path]] = []
+    metadata_apps: list[dict[str, Any]] = []
+    for app in selected_apps:
+        source_path = repo / app.manifest_path
+        document = preview.load_yaml_document(source_path.read_text(encoding="utf-8"))
+        if not document:
+            raise ValueError(f"Unable to parse Application manifest: {app.manifest_path}")
 
-            app_name = application_name(document)
-            pinned_sources = pin_current_repo_sources(
-                document,
-                current_repo_urls=current_repo_urls,
-                head_sha=args.head,
-                normalize_repo_url=preview.normalize_repo_url,
-            )
-            rendered = yaml.safe_dump(document, sort_keys=False)
-            output_path = output_dir / f"{app_name}.yaml"
-            output_path.write_text(rendered, encoding="utf-8")
+        app_name = application_name(document)
+        pinned_sources = pin_current_repo_sources(
+            document,
+            current_repo_urls=current_repo_urls,
+            head_sha=args.head,
+            normalize_repo_url=preview.normalize_repo_url,
+        )
+        output_path = output_dir / f"{app_name}.yaml"
+        output_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        generated_apps.append((app_name, output_path))
+        metadata_apps.append(
+            {
+                "name": app_name,
+                "namespace": app.namespace or "-",
+                "reasons": sorted(reasons[app_name]),
+                "pinnedSources": pinned_sources,
+            }
+        )
 
-            reason_text = ", ".join(sorted(reasons[app_name]))
-            print(
-                f"{app_name}: {reason_text}; "
-                f"pinned {pinned_sources} homelab-ops source(s) to {args.head}"
-            )
-            if args.dry_run:
-                continue
+        reason_text = ", ".join(sorted(reasons[app_name]))
+        print(
+            f"{app_name}: {reason_text}; "
+            f"pinned {pinned_sources} homelab-ops source(s) to {args.head}"
+        )
 
-            temporary_manifest = temp_dir / f"{app_name}.yaml"
-            temporary_manifest.write_text(rendered, encoding="utf-8")
+    metadata = {
+        "prNumber": args.pr_number or "",
+        "headSha": args.head,
+        "applications": metadata_apps,
+        "deferredDeletions": removed_apps,
+    }
+    Path(args.metadata_output).write_text(
+        json.dumps(metadata, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    if not generated_apps:
+        print("No new or changed Applications need to be deployed.")
+        return 0
+
+    if not args.dry_run:
+        for app_name, manifest_path in generated_apps:
             deploy_application(
                 preview,
                 repo=repo,
                 app_name=app_name,
-                manifest_path=temporary_manifest,
+                manifest_path=manifest_path,
                 timeout=args.timeout,
             )
 
