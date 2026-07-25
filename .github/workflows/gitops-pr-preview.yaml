@@ -69,6 +69,11 @@ jobs:
           sudo chmod +x /usr/local/bin/argocd
           argocd version --client
 
+      - name: Install Helm CLI
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.18.4
+
       - name: Generate GitOps preview
         env:
           GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
@@ -86,14 +91,24 @@ jobs:
         working-directory: ops
         run: python ../workflow/.github/scripts/gitops-pr-preview.py --output ../gitops-preview.md
 
+      - name: Upload complete rendered output
+        id: rendered-output
+        uses: actions/upload-artifact@v6
+        with:
+          name: gitops-rendered-output
+          path: ops/gitops-rendered-output
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upsert PR comment
         uses: actions/github-script@v7
+        env:
+          GITOPS_PREVIEW_ARTIFACT_URL: ${{ steps.rendered-output.outputs.artifact-url }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const fs = require('fs');
-            const marker = '<!-- friday-pa:argocd-diff -->';
-            const body = fs.readFileSync('gitops-preview.md', 'utf8');
+            const artifactUrl = process.env.GITOPS_PREVIEW_ARTIFACT_URL || '#';
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
 
@@ -104,20 +119,60 @@ jobs:
               per_page: 100,
             });
 
-            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
+            async function upsert(marker, body) {
+              const existing = comments.find(
+                (comment) => comment.body && comment.body.includes(marker),
+              );
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+                return;
+              }
               await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number,
                 body,
               });
+            }
+
+            const summaryMarker = '<!-- friday-pa:argocd-diff -->';
+            const summaryBody = fs
+              .readFileSync('gitops-preview.md', 'utf8')
+              .replaceAll('{{GITOPS_PREVIEW_ARTIFACT_URL}}', artifactUrl);
+            await upsert(summaryMarker, summaryBody);
+
+            const newAppDirectory = 'ops/gitops-new-app-comments';
+            const desiredNewAppMarkers = new Set();
+            const newAppFiles = fs.existsSync(newAppDirectory)
+              ? fs.readdirSync(newAppDirectory).filter((name) => name.endsWith('.md')).sort()
+              : [];
+
+            for (const file of newAppFiles) {
+              const body = fs
+                .readFileSync(`${newAppDirectory}/${file}`, 'utf8')
+                .replaceAll('{{GITOPS_PREVIEW_ARTIFACT_URL}}', artifactUrl);
+              const marker = body.match(/<!-- friday-pa:argocd-new-app:[^>]+ -->/)?.[0];
+              if (!marker) {
+                core.setFailed(`New-app comment ${file} has no friday-pa marker`);
+                return;
+              }
+              desiredNewAppMarkers.add(marker);
+              await upsert(marker, body);
+            }
+
+            for (const comment of comments) {
+              const marker = comment.body?.match(/<!-- friday-pa:argocd-new-app:[^>]+ -->/)?.[0];
+              const appSlug = comment.performed_via_github_app?.slug;
+              if (marker && appSlug === 'friday-pa' && !desiredNewAppMarkers.has(marker)) {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: comment.id,
+                });
+              }
             }

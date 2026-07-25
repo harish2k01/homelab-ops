@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -21,10 +22,9 @@ except ImportError as exc:
 
 COMMENT_MARKER = "<!-- friday-pa:argocd-diff -->"
 COMMENT_LIMIT = int(os.getenv("GITOPS_PREVIEW_COMMENT_LIMIT", "60000"))
-MAX_FILES = int(os.getenv("GITOPS_PREVIEW_MAX_FILES", "200"))
 MAX_APPS = int(os.getenv("GITOPS_PREVIEW_MAX_APPS", "30"))
-MAX_APP_DIFF_CHARS = int(os.getenv("GITOPS_PREVIEW_MAX_APP_DIFF_CHARS", "18000"))
-MAX_INPUT_DIFF_CHARS = int(os.getenv("GITOPS_PREVIEW_MAX_INPUT_DIFF_CHARS", "12000"))
+MAX_APP_DIFF_CHARS = int(os.getenv("GITOPS_PREVIEW_MAX_APP_DIFF_CHARS", "45000"))
+ARTIFACT_URL_PLACEHOLDER = "{{GITOPS_PREVIEW_ARTIFACT_URL}}"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
@@ -42,7 +42,12 @@ class Source:
     path: str | None
     chart: str | None
     ref: str | None
+    target_revision: str | None
     value_files: tuple[str, ...]
+    release_name: str | None
+    parameters: tuple[tuple[str, str, bool], ...]
+    values: str | None
+    values_object: dict[str, Any] | None
     current_repo: bool
 
 
@@ -60,10 +65,7 @@ class AppDiff:
     app: App
     status: str
     summary: str
-    command: list[str]
     output: str
-    notes: list[str]
-    input_diff: str = ""
 
 
 REASON_APPLICATION_SPEC = "Application spec changed"
@@ -108,10 +110,6 @@ def is_under(path: str, prefix: str) -> bool:
     path = normalize_path(path)
     prefix = normalize_path(prefix)
     return path == prefix or path.startswith(prefix + "/")
-
-
-def short_sha(value: str) -> str:
-    return value[:12] if value else "unknown"
 
 
 def escape_cell(value: str) -> str:
@@ -180,6 +178,17 @@ def app_from_document(path: str, data: dict[str, Any], *, from_head: bool, curre
         value_files = helm.get("valueFiles") or []
         if not isinstance(value_files, list):
             value_files = []
+        parameters: list[tuple[str, str, bool]] = []
+        for parameter in helm.get("parameters") or []:
+            if not isinstance(parameter, dict) or not parameter.get("name"):
+                continue
+            parameters.append(
+                (
+                    str(parameter["name"]),
+                    str(parameter.get("value", "")),
+                    bool(parameter.get("forceString", False)),
+                )
+            )
         repo_url = source.get("repoURL") or ""
         sources.append(
             Source(
@@ -188,7 +197,12 @@ def app_from_document(path: str, data: dict[str, Any], *, from_head: bool, curre
                 path=normalize_path(source["path"]) if source.get("path") else None,
                 chart=source.get("chart"),
                 ref=source.get("ref"),
+                target_revision=str(source["targetRevision"]) if source.get("targetRevision") is not None else None,
                 value_files=tuple(str(value) for value in value_files),
+                release_name=str(helm["releaseName"]) if helm.get("releaseName") else None,
+                parameters=tuple(parameters),
+                values=str(helm["values"]) if helm.get("values") is not None else None,
+                values_object=helm.get("valuesObject") if isinstance(helm.get("valuesObject"), dict) else None,
                 current_repo=normalize_repo_url(repo_url) in current_repo_urls,
             )
         )
@@ -349,17 +363,185 @@ def revision_args(app: App, head_sha: str) -> list[str]:
     return args
 
 
-def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_diff: bool, skip_reason: str) -> AppDiff:
-    notes: list[str] = []
-    if not app.from_head:
-        notes.append("Application is not present in the PR head checkout; live diff was skipped.")
-        return AppDiff(app=app, status="skipped", summary="app missing from PR head", command=[], output="", notes=notes)
+def resolve_value_file(repo: Path, source: Source, refs: dict[str, Source], value_file: str) -> Path:
+    normalized = normalize_path(value_file)
+    ref_match = re.match(r"^\$([^/]+)/(.+)$", normalized)
+    if ref_match:
+        ref_name, ref_path = ref_match.groups()
+        ref_source = refs.get(ref_name)
+        if not ref_source or not ref_source.current_repo:
+            raise ValueError(f"cannot resolve value file {value_file!r} from this checkout")
+        return repo / ref_path
 
-    if REASON_APPLICATION_SPEC in reasons:
-        notes.append("The Application spec changed. `argocd app diff` uses the live Application spec, so source, chart, and destination changes may not appear in the rendered child-resource diff.")
+    if source.current_repo and source.path:
+        return repo / source.path / normalized
+
+    raise ValueError(f"external Helm value file {value_file!r} must use a $ref source")
+
+
+def render_helm_source(repo: Path, app: App, source: Source, refs: dict[str, Source], temp_dir: Path) -> str:
+    if not shutil.which("helm"):
+        raise ValueError("`helm` CLI is not installed")
+
+    local_chart = repo / source.path if source.current_repo and source.path else None
+    if source.repo_url.startswith("oci://"):
+        chart_reference = source.repo_url
+    elif source.chart:
+        chart_reference = source.chart
+    elif local_chart and (local_chart / "Chart.yaml").is_file():
+        chart_reference = str(local_chart)
+    else:
+        raise ValueError(f"source {source.position} is not a renderable Helm chart")
+
+    command = [
+        "helm",
+        "template",
+        source.release_name or app.name,
+        chart_reference,
+        "--namespace",
+        app.namespace or "default",
+    ]
+    if source.chart:
+        command.extend(["--repo", source.repo_url])
+    if source.target_revision and not (local_chart and chart_reference == str(local_chart)):
+        command.extend(["--version", source.target_revision])
+
+    for value_file in source.value_files:
+        resolved = resolve_value_file(repo, source, refs, value_file)
+        if not resolved.is_file():
+            raise ValueError(f"Helm value file does not exist: {resolved.relative_to(repo)}")
+        command.extend(["--values", str(resolved)])
+
+    inline_values: list[str] = []
+    if source.values:
+        inline_values.append(source.values)
+    if source.values_object:
+        inline_values.append(yaml.safe_dump(source.values_object, sort_keys=False))
+    if inline_values:
+        values_path = temp_dir / f"source-{source.position}-values.yaml"
+        values_path.write_text("\n".join(inline_values), encoding="utf-8")
+        command.extend(["--values", str(values_path)])
+
+    for name, value, force_string in source.parameters:
+        command.extend(["--set-string" if force_string else "--set", f"{name}={value}"])
+
+    env = os.environ.copy()
+    helm_state = temp_dir / "helm"
+    helm_state.mkdir(exist_ok=True)
+    env["HELM_REPOSITORY_CONFIG"] = str(helm_state / "repositories.yaml")
+    env["HELM_REPOSITORY_CACHE"] = str(helm_state / "repository")
+    completed = run(command, cwd=repo, allow_failure=True, env=env)
+    if completed.returncode != 0:
+        raise ValueError(clean_output(completed.stdout) or f"`helm template` exited with {completed.returncode}")
+    return clean_output(completed.stdout)
+
+
+def render_directory_source(repo: Path, source: Source) -> str:
+    if not source.path:
+        return ""
+    source_dir = repo / source.path
+    if not source_dir.is_dir():
+        raise ValueError(f"source directory does not exist: {source.path}")
+
+    kustomization = next(
+        (source_dir / name for name in ("kustomization.yaml", "kustomization.yml", "Kustomization") if (source_dir / name).is_file()),
+        None,
+    )
+    if kustomization:
+        if shutil.which("kubectl"):
+            command = ["kubectl", "kustomize", str(source_dir)]
+        elif shutil.which("kustomize"):
+            command = ["kustomize", "build", str(source_dir)]
+        else:
+            raise ValueError(f"`{source.path}` is a Kustomize source, but neither `kubectl` nor `kustomize` is installed")
+        completed = run(command, cwd=repo, allow_failure=True)
+        if completed.returncode != 0:
+            raise ValueError(clean_output(completed.stdout) or "Kustomize rendering failed")
+        return clean_output(completed.stdout)
+
+    documents: list[str] = []
+    for path in sorted(source_dir.rglob("*")):
+        if path.is_file() and path.suffix.lower() in {".yaml", ".yml"}:
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                documents.append(text)
+    return "\n---\n".join(documents)
+
+
+def added_resources_diff(app: App, rendered: str) -> str:
+    lines = rendered.splitlines()
+    body = "\n".join(f"+{line}" for line in lines)
+    return f"--- /dev/null\n+++ {app.name}-rendered.yaml\n@@ -0,0 +1,{len(lines)} @@\n{body}"
+
+
+def render_new_app(repo: Path, app: App) -> AppDiff:
+    refs = {source.ref: source for source in app.sources if source.ref}
+    rendered_sources: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="gitops-preview-") as temp_name:
+            temp_dir = Path(temp_name)
+            for source in app.sources:
+                if source.ref and not source.path and not source.chart:
+                    continue
+
+                local_chart = bool(
+                    source.current_repo
+                    and source.path
+                    and (repo / source.path / "Chart.yaml").is_file()
+                )
+                is_helm = bool(source.chart or source.repo_url.startswith("oci://") or local_chart)
+                if is_helm:
+                    rendered = render_helm_source(repo, app, source, refs, temp_dir)
+                elif source.current_repo and source.path:
+                    rendered = render_directory_source(repo, source)
+                else:
+                    raise ValueError(
+                        f"source {source.position} cannot be rendered locally from repository {source.repo_url!r}"
+                    )
+                if rendered:
+                    rendered_sources.append(rendered)
+    except ValueError as exc:
+        return AppDiff(
+            app=app,
+            status="error",
+            summary="render failed",
+            output=str(exc),
+        )
+
+    if not rendered_sources:
+        return AppDiff(
+            app=app,
+            status="clean",
+            summary="no resources rendered",
+            output="",
+        )
+
+    output = added_resources_diff(app, "\n---\n".join(rendered_sources))
+    return AppDiff(
+        app=app,
+        status="created",
+        summary="resources to be created",
+        output=output,
+    )
+
+
+def run_app_diff(
+    repo: Path,
+    app: App,
+    head_sha: str,
+    can_diff: bool,
+    skip_reason: str,
+    *,
+    is_new: bool,
+) -> AppDiff:
+    if not app.from_head:
+        return AppDiff(app=app, status="skipped", summary="app missing from PR head", output="")
+
+    if is_new:
+        return render_new_app(repo, app)
 
     if not can_diff:
-        return AppDiff(app=app, status="skipped", summary=skip_reason, command=[], output="", notes=notes)
+        return AppDiff(app=app, status="skipped", summary=skip_reason, output="")
 
     command = [
         "argocd",
@@ -371,7 +553,10 @@ def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_dif
         *revision_args(app, head_sha),
     ]
     env = os.environ.copy()
-    env.setdefault("KUBECTL_EXTERNAL_DIFF", "diff -u -N")
+    env["KUBECTL_EXTERNAL_DIFF"] = os.getenv(
+        "GITOPS_PREVIEW_EXTERNAL_DIFF",
+        "diff -u -N -U1000000",
+    )
     env.setdefault("NO_COLOR", "1")
     env.setdefault("TERM", "dumb")
     completed = run(command, cwd=repo, allow_failure=True, env=env)
@@ -382,16 +567,13 @@ def run_app_diff(repo: Path, app: App, head_sha: str, reasons: set[str], can_dif
             app=app,
             status="error",
             summary=f"`argocd app diff` exited with {completed.returncode}",
-            command=command,
             output=output,
-            notes=notes,
         )
 
     if output:
-        return AppDiff(app=app, status="changed", summary="rendered Kubernetes changes", command=command, output=output, notes=notes)
+        return AppDiff(app=app, status="changed", summary="rendered Kubernetes changes", output=output)
 
-    notes.append("Argo CD returned an empty diff. The PR still maps to this app, but Argo CD did not render child-resource changes for the requested revision.")
-    return AppDiff(app=app, status="clean", summary="no rendered Kubernetes changes", command=command, output="", notes=notes)
+    return AppDiff(app=app, status="clean", summary="no rendered Kubernetes changes", output="")
 
 
 def truncate(text: str, limit: int) -> str:
@@ -400,37 +582,13 @@ def truncate(text: str, limit: int) -> str:
     return text[:limit] + f"\n\n... truncated {len(text) - limit} characters ..."
 
 
-def command_for_display(command: list[str]) -> str:
-    hidden_flags = {"--auth-token"}
-    sanitized: list[str] = []
-    skip_next = False
-    for part in command:
-        if skip_next:
-            skip_next = False
-            continue
-        if part in hidden_flags:
-            sanitized.extend([part, "***"])
-            skip_next = True
-            continue
-        sanitized.append(part)
-    return " ".join(sanitized)
-
-
-def status_label(status: str) -> str:
-    return {
-        "A": "added",
-        "M": "modified",
-        "D": "deleted",
-        "R": "renamed",
-        "C": "copied",
-    }.get(status, status.lower())
-
-
 def diff_result_label(diff: AppDiff | None) -> str:
     if not diff:
         return "not evaluated"
     if diff.status == "changed":
         return "rendered changes"
+    if diff.status == "created":
+        return "resources to be created"
     if diff.status == "clean":
         return "no rendered changes"
     if diff.status == "error":
@@ -438,80 +596,24 @@ def diff_result_label(diff: AppDiff | None) -> str:
     return diff.summary
 
 
-def diff_counts(app_diffs: list[AppDiff]) -> dict[str, int]:
-    counts = {"changed": 0, "clean": 0, "skipped": 0, "error": 0}
-    for diff in app_diffs:
-        counts[diff.status] = counts.get(diff.status, 0) + 1
-    return counts
-
-
-def app_change_paths(app: App, changes: list[Change], reasons: set[str]) -> list[str]:
-    paths: set[str] = set()
-    for change in changes:
-        if any(path_reason_matches(change, reason, app) for reason in reasons):
-            paths.update(changed_paths(change))
-    return sorted(paths)
-
-
-def git_input_diff(repo: Path, base_sha: str, head_sha: str, paths: list[str]) -> str:
-    if not paths:
-        return ""
-    output = git(["diff", "--no-color", "--find-renames", base_sha, head_sha, "--", *paths], cwd=repo, allow_failure=True)
-    return clean_output(output)
-
-
 def build_markdown(
     *,
-    base_sha: str,
-    head_sha: str,
-    changes: list[Change],
     reasons: dict[str, set[str]],
     app_diffs: list[AppDiff],
     apps: list[App],
-    workflow_url: str,
+    new_app_names: set[str],
 ) -> str:
     app_by_name = {app.name: app for app in apps}
     changed_app_names = sorted(reasons)
-    counts = diff_counts(app_diffs)
-    file_rows: list[str] = []
-
-    for change in changes[:MAX_FILES]:
-        impacted = sorted(
-            app_name
-            for app_name, app_reasons in reasons.items()
-            if any(path_reason_matches(change, app_reason, app_by_name.get(app_name)) for app_reason in app_reasons)
-        )
-        path = change.path if not change.old_path else f"{change.old_path} -> {change.path}"
-        file_rows.append(f"| {escape_cell(status_label(change.status))} | `{escape_cell(path)}` | {escape_cell(', '.join(impacted) or '-') } |")
-
-    if len(changes) > MAX_FILES:
-        file_rows.append(f"| ... | ... | {len(changes) - MAX_FILES} more files omitted |")
-
     lines: list[str] = [
         COMMENT_MARKER,
         "## GitOps PR Preview",
         "",
-        "| Base | Head | Workflow |",
-        "|---|---|---|",
-        f"| `{short_sha(base_sha)}` | `{short_sha(head_sha)}` | {f'[logs]({workflow_url})' if workflow_url else '-'} |",
+        "### Summary",
+        "",
+        "| Application | Namespace | Changed inputs | Result |",
+        "|---|---|---|---|",
     ]
-    lines.extend(
-        [
-            "",
-            "### Summary",
-            "",
-            "| Changed files | Candidate apps | Rendered changes | No rendered changes | Skipped | Errors |",
-            "|---:|---:|---:|---:|---:|---:|",
-            f"| {len(changes)} | {len(changed_app_names)} | {counts.get('changed', 0)} | {counts.get('clean', 0)} | {counts.get('skipped', 0)} | {counts.get('error', 0)} |",
-            "",
-            "> Candidate app means a changed file is referenced by an Argo CD Application or matches that app's repo path. It does not guarantee a rendered Kubernetes diff.",
-            "",
-            "### Candidate Applications",
-            "",
-            "| App | Namespace | Changed inputs | Rendered child resources |",
-            "|---|---|---|---|",
-        ]
-    )
 
     diff_by_app = {item.app.name: item for item in app_diffs}
     for app_name in changed_app_names[:MAX_APPS]:
@@ -525,67 +627,62 @@ def build_markdown(
         lines.append(f"| ... | ... | {len(changed_app_names) - MAX_APPS} more apps omitted | ... |")
 
     if not changed_app_names:
-        lines.append("| - | - | No candidate app detected | - |")
+        lines.append("| - | - | No affected Application detected | - |")
 
-    lines.extend(
-        [
-            "",
-            "<details open>",
-            f"<summary>Changed GitOps files ({len(changes)})</summary>",
-            "",
-            "| Status | Path | Candidate apps |",
-            "|---|---|---|",
-        ]
+    existing_app_diffs = [diff for diff in app_diffs if diff.app.name not in new_app_names]
+    per_app_limit = min(
+        MAX_APP_DIFF_CHARS,
+        max(1000, (COMMENT_LIMIT - 15000) // max(1, len(existing_app_diffs))),
     )
-    lines.extend(file_rows or ["| - | No GitOps file changes detected | - |"])
-    lines.extend(["", "</details>"])
-
-    for diff in app_diffs[:MAX_APPS]:
+    for diff in existing_app_diffs[:MAX_APPS]:
         lines.extend(["", "<details>", f"<summary>{escape_cell(diff.app.name)} - {escape_cell(diff.summary)}</summary>", ""])
-        app_reasons = sorted(reasons.get(diff.app.name, []))
-        if app_reasons:
-            lines.extend(["Changed inputs:", ""])
-            for reason in app_reasons:
-                lines.append(f"- {reason}")
-        for note in diff.notes:
-            if app_reasons:
-                lines.append("")
-            lines.append(f"> {note}")
-            app_reasons = []
-        if diff.command:
-            lines.extend(["", "Command:", "", f"`{command_for_display(diff.command)}`"])
         if diff.output:
-            lines.extend(["", "Rendered Kubernetes diff:", "", "```diff", truncate(diff.output.replace("```", "` ` `"), MAX_APP_DIFF_CHARS), "```"])
-        if diff.input_diff:
-            lines.extend(["", "Git input patch:", "", "```diff", truncate(diff.input_diff.replace("```", "` ` `"), MAX_INPUT_DIFF_CHARS), "```"])
+            fence = "diff" if diff.status in {"changed", "created"} else "text"
+            safe_output = diff.output.replace("```", "` ` `")
+            lines.extend([f"```{fence}", truncate(safe_output, per_app_limit), "```"])
+            if len(safe_output) > per_app_limit:
+                lines.extend(
+                    [
+                        "",
+                        f"[Download the complete rendered output]({ARTIFACT_URL_PLACEHOLDER})",
+                    ]
+                )
+        else:
+            lines.append(diff.summary.capitalize() + ".")
         lines.extend(["", "</details>"])
 
     return truncate("\n".join(lines).rstrip() + "\n", COMMENT_LIMIT)
 
 
-def path_reason_matches(change: Change, reason: str, app: App | None) -> bool:
-    if not app:
-        return False
-    paths = changed_paths(change)
-    if "Application manifest" in reason:
-        return app.manifest_path in paths
-    if reason == REASON_APPLICATION_SPEC:
-        return app.manifest_path in paths
-    if "Helm value file" in reason:
-        values = helm_value_paths(app)
-        return any(path in values for path in paths)
-    if reason == REASON_HELM_VALUES:
-        values = helm_value_paths(app)
-        return any(path in values for path in paths)
-    if reason.endswith("source changed"):
-        for source in app.sources:
-            if source.current_repo and source.path and any(is_under(path, source.path) for path in paths):
-                return True
-    match = re.match(r"`([^`]+)` files changed", reason)
-    if match:
-        prefix = match.group(1)
-        return any(is_under(path, prefix) for path in paths)
-    return False
+def build_new_app_markdown(diff: AppDiff) -> str:
+    marker = f"<!-- friday-pa:argocd-new-app:{diff.app.name} -->"
+    fence = "diff" if diff.status == "created" else "text"
+    prefix = "\n".join(
+        [
+            marker,
+            f"## New Argo CD Application: `{diff.app.name}`",
+            "",
+            f"Namespace: `{diff.app.namespace or '-'}`",
+            "",
+            "<details open>",
+            f"<summary>{escape_cell(diff.summary.capitalize())}</summary>",
+            "",
+            f"```{fence}",
+        ]
+    )
+    plain_suffix = "\n```\n\n</details>\n"
+    artifact_suffix = (
+        "\n```\n\n"
+        f"[Download the complete rendered output]({ARTIFACT_URL_PLACEHOLDER})"
+        "\n\n</details>\n"
+    )
+    safe_output = diff.output.replace("```", "` ` `") if diff.output else diff.summary.capitalize() + "."
+
+    if len(prefix) + len(safe_output) + len(plain_suffix) <= COMMENT_LIMIT:
+        return prefix + "\n" + safe_output + plain_suffix
+
+    output_limit = max(1000, COMMENT_LIMIT - len(prefix) - len(artifact_suffix) - 200)
+    return prefix + "\n" + truncate(safe_output, output_limit) + artifact_suffix
 
 
 def parse_args() -> argparse.Namespace:
@@ -594,6 +691,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--head", default=os.getenv("GITHUB_HEAD_SHA") or os.getenv("GITHUB_SHA"), help="Head commit SHA.")
     parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY"), help="GitHub repository, owner/name.")
     parser.add_argument("--output", default="gitops-preview.md", help="Markdown output path.")
+    parser.add_argument("--output-dir", default="gitops-rendered-output", help="Directory for complete per-app output.")
+    parser.add_argument(
+        "--new-app-comments-dir",
+        default="gitops-new-app-comments",
+        help="Directory for separate new-Application comments.",
+    )
     return parser.parse_args()
 
 
@@ -618,26 +721,54 @@ def main() -> int:
 
     can_diff, skip_reason = argo_available()
     app_diffs: list[AppDiff] = []
+    base_app_names = {app.name for app in base_apps}
+    new_app_names = {
+        app.name
+        for app in head_apps
+        if app.name not in base_app_names and app.name in reasons
+    }
     for app_name in sorted(reasons)[:MAX_APPS]:
         app = next((item for item in apps if item.name == app_name), None)
         if not app:
             continue
-        app_diff = run_app_diff(repo, app, args.head, reasons[app_name], can_diff, skip_reason)
-        app_diff.input_diff = git_input_diff(repo, args.base, args.head, app_change_paths(app, changes, reasons[app_name]))
+        app_diff = run_app_diff(
+            repo,
+            app,
+            args.head,
+            can_diff,
+            skip_reason,
+            is_new=app.name not in base_app_names,
+        )
         app_diffs.append(app_diff)
 
-    run_id = os.getenv("GITHUB_RUN_ID")
-    server_url = os.getenv("GITHUB_SERVER_URL", "https://github.com")
-    workflow_url = f"{server_url}/{args.repo}/actions/runs/{run_id}" if run_id else ""
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for old_output in output_dir.glob("*.diff"):
+        old_output.unlink()
+    for app_diff in app_diffs:
+        if not app_diff.output:
+            continue
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", app_diff.app.name)
+        (output_dir / f"{safe_name}.diff").write_text(app_diff.output + "\n", encoding="utf-8")
+
+    new_app_comments_dir = Path(args.new_app_comments_dir)
+    new_app_comments_dir.mkdir(parents=True, exist_ok=True)
+    for old_comment in new_app_comments_dir.glob("*.md"):
+        old_comment.unlink()
+    for app_diff in app_diffs:
+        if app_diff.app.name not in new_app_names:
+            continue
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", app_diff.app.name)
+        (new_app_comments_dir / f"{safe_name}.md").write_text(
+            build_new_app_markdown(app_diff),
+            encoding="utf-8",
+        )
 
     markdown = build_markdown(
-        base_sha=args.base,
-        head_sha=args.head,
-        changes=changes,
         reasons=reasons,
         app_diffs=app_diffs,
         apps=apps,
-        workflow_url=workflow_url,
+        new_app_names=new_app_names,
     )
     Path(args.output).write_text(markdown, encoding="utf-8")
     print(f"Wrote {args.output}")
