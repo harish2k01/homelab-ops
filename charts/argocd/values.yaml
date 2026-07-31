@@ -451,6 +451,9 @@ configs:
     # (e.g.)
     # otlp.address: ''
     server.insecure: true
+    # Allow larger Helm renders to complete through the repo-server RPC boundary.
+    server.repo.server.timeout.seconds: "300"
+    controller.repo.server.timeout.seconds: "300"
 
   # Argo CD RBAC policy configuration
   ## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md

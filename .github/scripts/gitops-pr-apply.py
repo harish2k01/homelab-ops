@@ -14,6 +14,14 @@ from typing import Any
 
 
 OPERATION_IN_PROGRESS = "another operation is already in progress"
+TRANSIENT_ARGO_ERRORS = (
+    "code = deadlineexceeded",
+    "stream terminated by rst_stream",
+    "transport is closing",
+    "connection reset by peer",
+    "unexpected eof",
+)
+CREATE_ATTEMPTS = 3
 SYNC_ATTEMPTS = 3
 
 
@@ -62,6 +70,11 @@ def application_name(document: dict[str, Any]) -> str:
     return str(metadata["name"])
 
 
+def is_transient_argo_error(output: str) -> bool:
+    normalized = output.lower()
+    return any(marker in normalized for marker in TRANSIENT_ARGO_ERRORS)
+
+
 def deploy_application(
     preview: ModuleType,
     *,
@@ -81,8 +94,24 @@ def deploy_application(
         str(manifest_path),
         "--upsert",
     ]
-    print(f"Running: {' '.join(create_command)}", flush=True)
-    preview.run(create_command, cwd=repo)
+    for attempt in range(1, CREATE_ATTEMPTS + 1):
+        print(f"Running: {' '.join(create_command)}", flush=True)
+        completed = preview.run(create_command, cwd=repo, allow_failure=True)
+        if completed.returncode == 0:
+            break
+
+        output = completed.stdout or ""
+        if not is_transient_argo_error(output) or attempt == CREATE_ATTEMPTS:
+            print(output, file=sys.stderr, flush=True)
+            raise SystemExit(completed.returncode)
+
+        delay = 10 * attempt
+        print(
+            f"{app_name}: transient Argo CD manifest-generation failure; "
+            f"retrying app create in {delay}s ({attempt + 1}/{CREATE_ATTEMPTS}).",
+            flush=True,
+        )
+        time.sleep(delay)
 
     deadline = time.monotonic() + timeout
     sync_command = ["argocd", *base_args, "app", "sync", app_name]
