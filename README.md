@@ -131,37 +131,40 @@ preview comment.
 
 For GitOps changes, `friday-pa` maintains a sticky PR comment:
 
-- Existing Applications show a separate diff for every changed Application,
-  values, manifest, or chart input, followed by a concise rendered Kubernetes diff
-- New Applications receive a separate comment containing the changed input-file
-  diffs and rendered resources
+- Existing Applications receive a concise, Kubernetes-aware `dyff` comparison
+  of the live and proposed rendered resources
+- New Applications receive a separate comment containing the rendered resources
+- Repository-level Git patches are not included in preview comments
 - Renders that exceed the GitHub comment limit are attached as workflow artifacts
 - Changed values and repository paths are mapped back to their affected Applications
-- The deployment workflow starts only after the mandatory preview check succeeds
 
 ### 🚀 Reviewer-approved apply
 
-When a PR adds or changes a file under `argocd-apps/`, `GitOps PR Apply`
-automatically:
+After a PR that adds or changes a file under `argocd-apps/` is merged,
+`GitOps PR Apply` automatically:
 
-1. Determines every affected Application.
+1. Checks out the merge commit and determines every affected Application.
 2. Posts a sticky `friday-pa` deployment comment with the Application names,
-   namespaces, change reasons, and proposed PR revision.
+   namespaces, merged change reasons, and merge revision.
 3. Waits for approval through the GitHub environment named `olympus`.
 
-Approval pins this repository's Application sources to the exact PR head commit,
-while preserving external Helm chart versions. The workflow then upserts each
-Application, starts an Argo CD sync, and waits for the Application to become
-synced and healthy.
+Approval applies the unmodified Application definitions from the merge commit, so
+their declared source revisions, including `targetRevision: main`, remain intact.
+The workflow then starts an Argo CD sync and waits for each Application to become
+synced and healthy. If an automated or existing Argo CD operation is already in
+progress, it waits and retries without terminating that operation.
+
+Application deletions are reported in the deployment comment and require manual
+cleanup.
 
 The deployment comment is updated with the result:
 
 - `Deployed successfully` when every Application passes sync and health checks
 - `Deployment failed` when validation, apply, sync, or health checks fail
-- `Deployment skipped` when approval is rejected or the PR is merged or closed
-  without approval
+- `Deployment skipped` when the `olympus` approval is rejected
 
-This deployment is optional.
+Closing a PR without merging does not start this workflow. The post-merge
+Application deployment remains optional.
 
 ## 🏗️ Infrastructure
 
