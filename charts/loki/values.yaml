@@ -2151,7 +2151,7 @@ write:
   # @schema type:[integer, null]
   # -- Number of replicas for the write. Set to null to omit spec.replicas from the workload,
   # allowing an external controller (e.g. HPA, KEDA, rollout-operator) to manage replica counts without Helm resetting them.
-  replicas: 3
+  replicas: 0
   # @schema skipProperties:true;additionalProperties:true
   # -- UpdateStrategy or Strategy for the write.
   strategy:
@@ -2416,7 +2416,7 @@ read:
   # @schema type:[integer, null]
   # -- Number of replicas for the read. Set to null to omit spec.replicas from the workload,
   # allowing an external controller (e.g. HPA, KEDA, rollout-operator) to manage replica counts without Helm resetting them.
-  replicas: 3
+  replicas: 0
   # @schema skipProperties:true;additionalProperties:true
   # -- UpdateStrategy or Strategy for the read.
   strategy:
@@ -2654,7 +2654,7 @@ backend:
   # @schema type:[integer, null]
   # -- Number of replicas for the backend. Set to null to omit spec.replicas from the workload,
   # allowing an external controller (e.g. HPA, KEDA, rollout-operator) to manage replica counts without Helm resetting them.
-  replicas: 3
+  replicas: 0
   # @schema skipProperties:true;additionalProperties:true
   # -- UpdateStrategy or Strategy for the backend.
   strategy:
