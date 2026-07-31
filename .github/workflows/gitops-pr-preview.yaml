@@ -16,8 +16,6 @@ jobs:
   preview:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: homelab-ops-runner
-    outputs:
-      apply_required: ${{ steps.changes.outputs.apply_required }}
 
     steps:
       - name: Detect GitOps changes
@@ -45,11 +43,7 @@ jobs:
             const required = changedPaths.some((path) =>
               gitopsPrefixes.some((prefix) => path.startsWith(prefix)),
             );
-            const applyRequired = changedPaths.some((path) =>
-              path.startsWith('argocd-apps/'),
-            );
             core.setOutput('required', String(required));
-            core.setOutput('apply_required', String(applyRequired));
             if (!required) {
               core.notice('No GitOps files changed; preview generation is not required.');
             }
@@ -104,6 +98,20 @@ jobs:
           sudo chmod +x /usr/local/bin/argocd
           argocd version --client
 
+      - name: Install dyff
+        if: steps.changes.outputs.required == 'true'
+        env:
+          DYFF_VERSION: "1.12.0"
+          DYFF_SHA256: "50b43017a7474c2216694d0b5387439488a1d3c2b5eefe1674cd0e5c18bc0316"
+        run: |
+          archive="dyff_${DYFF_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLo "/tmp/${archive}" \
+            "https://github.com/homeport/dyff/releases/download/v${DYFF_VERSION}/${archive}"
+          echo "${DYFF_SHA256}  /tmp/${archive}" | sha256sum --check --strict
+          tar -xzf "/tmp/${archive}" -C /tmp dyff
+          sudo install -m 0755 /tmp/dyff /usr/local/bin/dyff
+          dyff version
+
       - name: Install Helm CLI
         if: steps.changes.outputs.required == 'true'
         uses: azure/setup-helm@v5
@@ -125,6 +133,7 @@ jobs:
           ARGOCD_INSECURE: ${{ vars.ARGOCD_INSECURE }}
           ARGOCD_PLAINTEXT: ${{ vars.ARGOCD_PLAINTEXT }}
           ARGOCD_DIFF_REFRESH: ${{ vars.ARGOCD_DIFF_REFRESH }}
+          GITOPS_PREVIEW_EXTERNAL_DIFF: dyff between --output github --set-exit-code
         working-directory: ops
         run: python ../workflow/.github/scripts/gitops-pr-preview.py --output ../gitops-preview.md
 
@@ -215,12 +224,3 @@ jobs:
                 });
               }
             }
-
-  apply:
-    name: deploy
-    needs: preview
-    if: >-
-      needs.preview.result == 'success' &&
-      needs.preview.outputs.apply_required == 'true'
-    uses: ./.github/workflows/gitops-pr-apply.yaml
-    secrets: inherit
