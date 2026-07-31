@@ -37,8 +37,11 @@ jobs:
               'infra/',
               'manifests/',
             ];
-            const required = files.some((file) =>
-              gitopsPrefixes.some((prefix) => file.filename.startsWith(prefix)),
+            const changedPaths = files.flatMap((file) =>
+              [file.filename, file.previous_filename].filter(Boolean),
+            );
+            const required = changedPaths.some((path) =>
+              gitopsPrefixes.some((prefix) => path.startsWith(prefix)),
             );
             core.setOutput('required', String(required));
             if (!required) {

@@ -3,10 +3,6 @@ name: GitOps PR Apply
 on:
   pull_request_target:
     types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
       - closed
     paths:
       - "argocd-apps/**"
@@ -22,17 +18,17 @@ permissions:
 jobs:
   request:
     if: >-
-      github.event.action != 'closed' &&
+      github.event.pull_request.merged == true &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: homelab-ops-runner
     outputs:
       base_sha: ${{ steps.pr.outputs.base_sha }}
-      head_sha: ${{ steps.pr.outputs.head_sha }}
+      merge_sha: ${{ steps.pr.outputs.merge_sha }}
       number: ${{ steps.pr.outputs.number }}
       app_count: ${{ steps.comment.outputs.app_count }}
 
     steps:
-      - name: Validate deployment request
+      - name: Validate merged deployment request
         id: pr
         uses: actions/github-script@v7
         with:
@@ -45,8 +41,8 @@ jobs:
               pull_number,
             });
 
-            if (pull.state !== 'open') {
-              core.setFailed(`PR #${pull_number} is no longer open`);
+            if (pull.state !== 'closed' || !pull.merged || !pull.merge_commit_sha) {
+              core.setFailed(`PR #${pull_number} was not merged`);
               return;
             }
             if (pull.head.repo.full_name !== `${owner}/${repo}`) {
@@ -55,21 +51,21 @@ jobs:
             }
 
             core.setOutput('base_sha', pull.base.sha);
-            core.setOutput('head_sha', pull.head.sha);
+            core.setOutput('merge_sha', pull.merge_commit_sha);
             core.setOutput('number', String(pull.number));
 
       - name: Checkout trusted workflow code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ steps.pr.outputs.base_sha }}
+          ref: ${{ steps.pr.outputs.merge_sha }}
           path: workflow
 
-      - name: Checkout PR revision
+      - name: Checkout merged revision
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ steps.pr.outputs.head_sha }}
+          ref: ${{ steps.pr.outputs.merge_sha }}
           path: ops
 
       - name: Set up Python
@@ -83,7 +79,7 @@ jobs:
       - name: Prepare deployment request
         env:
           GITHUB_BASE_SHA: ${{ steps.pr.outputs.base_sha }}
-          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.merge_sha }}
           GITHUB_PR_NUMBER: ${{ steps.pr.outputs.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         working-directory: ops
@@ -102,7 +98,7 @@ jobs:
         id: comment
         uses: actions/github-script@v7
         env:
-          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          MERGE_SHA: ${{ steps.pr.outputs.merge_sha }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -114,40 +110,40 @@ jobs:
             const escapeCell = (value) =>
               String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
             const status = metadata.applications.length
-              ? 'Waiting for `olympus` approval'
-              : 'No pre-merge deployment required';
+              ? 'Merged; waiting for `olympus` approval'
+              : 'Merged; no Application deployment required';
             const lines = [
               marker,
               '## Argo CD Deployment',
               '',
               `**Status:** ${status}`,
-              `**Revision:** \`${process.env.HEAD_SHA.slice(0, 12)}\``,
+              `**Merge revision:** \`${process.env.MERGE_SHA.slice(0, 12)}\``,
               '',
-              '| Application | Namespace | Changes | PR sources pinned |',
-              '|---|---|---|---:|',
+              '| Application | Namespace | Merged changes |',
+              '|---|---|---|',
             ];
 
             for (const app of metadata.applications) {
               lines.push(
                 `| \`${escapeCell(app.name)}\` | \`${escapeCell(app.namespace)}\` | ` +
-                `${app.reasons.map(escapeCell).join('<br>')} | ${app.pinnedSources} |`,
+                `${app.reasons.map(escapeCell).join('<br>')} |`,
               );
             }
             if (!metadata.applications.length) {
-              lines.push('| - | - | No deployable Application remains in the PR head | - |');
+              lines.push('| - | - | No deployable Application remains in the merge commit |');
             }
             if (metadata.deferredDeletions.length) {
               lines.push(
                 '',
-                `Application deletions deferred until merge: ` +
+                `Application deletions require manual cleanup: ` +
                 metadata.deferredDeletions.map((name) => `\`${name}\``).join(', '),
               );
             }
             if (metadata.applications.length) {
               lines.push(
                 '',
-                '> This deployment is optional. Approve the `olympus` environment to deploy now, ' +
-                'or merge/close the PR without approval to skip it.',
+                '> The PR is merged. Approve the `olympus` environment to apply the merged ' +
+                'Application definitions and sync them, or reject the deployment to skip it.',
               );
             }
 
@@ -199,7 +195,7 @@ jobs:
         id: pr
         uses: actions/github-script@v7
         env:
-          APPROVED_HEAD_SHA: ${{ needs.request.outputs.head_sha }}
+          APPROVED_MERGE_SHA: ${{ needs.request.outputs.merge_sha }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -210,33 +206,33 @@ jobs:
               pull_number,
             });
 
-            if (pull.state !== 'open') {
-              core.setFailed(`PR #${pull_number} is no longer open`);
+            if (pull.state !== 'closed' || !pull.merged || !pull.merge_commit_sha) {
+              core.setFailed(`PR #${pull_number} is not merged`);
               return;
             }
-            if (pull.head.sha !== process.env.APPROVED_HEAD_SHA) {
+            if (pull.merge_commit_sha !== process.env.APPROVED_MERGE_SHA) {
               core.setFailed(
-                `PR head changed while approval was pending: ` +
-                `expected ${process.env.APPROVED_HEAD_SHA}, current ${pull.head.sha}`,
+                `PR merge revision changed while approval was pending: ` +
+                `expected ${process.env.APPROVED_MERGE_SHA}, current ${pull.merge_commit_sha}`,
               );
               return;
             }
 
             core.setOutput('base_sha', pull.base.sha);
-            core.setOutput('head_sha', pull.head.sha);
+            core.setOutput('merge_sha', pull.merge_commit_sha);
 
       - name: Checkout trusted workflow code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ steps.pr.outputs.base_sha }}
+          ref: ${{ steps.pr.outputs.merge_sha }}
           path: workflow
 
-      - name: Checkout approved PR revision
+      - name: Checkout approved merge revision
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ steps.pr.outputs.head_sha }}
+          ref: ${{ steps.pr.outputs.merge_sha }}
           path: ops
 
       - name: Set up Python
@@ -263,7 +259,7 @@ jobs:
       - name: Apply approved Applications
         env:
           GITHUB_BASE_SHA: ${{ steps.pr.outputs.base_sha }}
-          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          GITHUB_HEAD_SHA: ${{ steps.pr.outputs.merge_sha }}
           GITHUB_PR_NUMBER: ${{ needs.request.outputs.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
@@ -274,14 +270,14 @@ jobs:
         working-directory: ops
         run: |
           set -o pipefail
-          python ../workflow/.github/scripts/gitops-pr-apply.py 2>&1 \
+          python -u ../workflow/.github/scripts/gitops-pr-apply.py 2>&1 \
             | tee ../gitops-pr-apply.log
 
       - name: Upload deployment output
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: gitops-pr-apply-${{ needs.request.outputs.number }}-${{ needs.request.outputs.head_sha }}
+          name: gitops-pr-apply-${{ needs.request.outputs.number }}-${{ needs.request.outputs.merge_sha }}
           path: |
             ops/gitops-pr-apply-output
             gitops-pr-apply.log
@@ -353,55 +349,6 @@ jobs:
             let body = existing.body.replace(/^\*\*Status:\*\*.*$/m, `**Status:** ${status}`);
             body = body.replace(/\n\*\*Result:\*\*.*$/m, '');
             body = `${body.trim()}\n\n**Result:** ${result}\n`;
-            await github.rest.issues.updateComment({
-              owner,
-              repo,
-              comment_id: existing.id,
-              body,
-            });
-
-  close:
-    if: >-
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Create friday-pa token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
-          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
-
-      - name: Mark an unapproved deployment as skipped
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const marker = '<!-- friday-pa:argocd-apply -->';
-            const { owner, repo } = context.repo;
-            const issue_number = context.issue.number;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number,
-              per_page: 100,
-            });
-            const existing = comments.find(
-              (comment) => comment.body && comment.body.includes(marker),
-            );
-            if (!existing || !existing.body.includes('Waiting for `olympus` approval')) {
-              return;
-            }
-
-            let body = existing.body.replace(
-              /^\*\*Status:\*\*.*$/m,
-              '**Status:** Deployment skipped',
-            );
-            body = `${body.trim()}\n\n**Result:** PR merged or closed without deployment approval.\n`;
             await github.rest.issues.updateComment({
               owner,
               repo,

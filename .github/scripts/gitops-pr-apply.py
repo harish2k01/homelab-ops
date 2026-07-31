@@ -4,17 +4,17 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import os
 import sys
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-try:
-    import yaml
-except ImportError as exc:
-    print("PyYAML is required. Install it with: python -m pip install pyyaml", file=sys.stderr)
-    raise SystemExit(2) from exc
+
+OPERATION_IN_PROGRESS = "another operation is already in progress"
+SYNC_ATTEMPTS = 3
 
 
 def load_preview_module() -> ModuleType:
@@ -29,13 +29,23 @@ def load_preview_module() -> ModuleType:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Deploy reviewer-approved GitOps PR changes through Argo CD.")
+    parser = argparse.ArgumentParser(
+        description="Deploy reviewer-approved merged GitOps changes through Argo CD."
+    )
     parser.add_argument("--base", default=os.getenv("GITHUB_BASE_SHA"), help="PR base commit SHA.")
-    parser.add_argument("--head", default=os.getenv("GITHUB_HEAD_SHA"), help="Approved PR head commit SHA.")
+    parser.add_argument(
+        "--head",
+        default=os.getenv("GITHUB_HEAD_SHA"),
+        help="Approved PR merge commit SHA.",
+    )
     parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY"), help="GitHub repository, owner/name.")
     parser.add_argument("--pr-number", default=os.getenv("GITHUB_PR_NUMBER"), help="Pull request number.")
     parser.add_argument("--timeout", type=int, default=900, help="Seconds to wait for each Application.")
-    parser.add_argument("--dry-run", action="store_true", help="Generate pinned Application files without deploying.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate merged Application files without deploying.",
+    )
     parser.add_argument("--output-dir", default="gitops-pr-apply-output", help="Dry-run output directory.")
     parser.add_argument(
         "--metadata-output",
@@ -43,33 +53,6 @@ def parse_args() -> argparse.Namespace:
         help="JSON summary used by the PR deployment comment.",
     )
     return parser.parse_args()
-
-
-def pin_current_repo_sources(
-    document: dict[str, Any],
-    *,
-    current_repo_urls: set[str],
-    head_sha: str,
-    normalize_repo_url: Any,
-) -> int:
-    spec = document.get("spec")
-    if not isinstance(spec, dict):
-        return 0
-
-    if isinstance(spec.get("sources"), list):
-        sources = [source for source in spec["sources"] if isinstance(source, dict)]
-    elif isinstance(spec.get("source"), dict):
-        sources = [spec["source"]]
-    else:
-        sources = []
-
-    pinned = 0
-    for source in sources:
-        if normalize_repo_url(str(source.get("repoURL", ""))) not in current_repo_urls:
-            continue
-        source["targetRevision"] = head_sha
-        pinned += 1
-    return pinned
 
 
 def application_name(document: dict[str, Any]) -> str:
@@ -88,34 +71,81 @@ def deploy_application(
     timeout: int,
 ) -> None:
     base_args = preview.argo_base_args()
-    commands = [
-        [
-            "argocd",
-            *base_args,
-            "app",
-            "create",
-            app_name,
-            "--file",
-            str(manifest_path),
-            "--upsert",
-        ],
-        ["argocd", *base_args, "app", "sync", app_name],
-        [
+    create_command = [
+        "argocd",
+        *base_args,
+        "app",
+        "create",
+        app_name,
+        "--file",
+        str(manifest_path),
+        "--upsert",
+    ]
+    print(f"Running: {' '.join(create_command)}", flush=True)
+    preview.run(create_command, cwd=repo)
+
+    deadline = time.monotonic() + timeout
+    sync_command = ["argocd", *base_args, "app", "sync", app_name]
+    for attempt in range(1, SYNC_ATTEMPTS + 1):
+        print(f"Running: {' '.join(sync_command)}", flush=True)
+        completed = preview.run(sync_command, cwd=repo, allow_failure=True)
+        if completed.returncode == 0:
+            break
+
+        output = completed.stdout or ""
+        if OPERATION_IN_PROGRESS not in output.lower() or attempt == SYNC_ATTEMPTS:
+            print(output, file=sys.stderr, flush=True)
+            raise SystemExit(completed.returncode)
+
+        remaining = max(0, math.ceil(deadline - time.monotonic()))
+        if remaining <= 0:
+            print(output, file=sys.stderr, flush=True)
+            raise SystemExit(completed.returncode)
+
+        print(
+            f"{app_name}: another Argo CD operation is running; "
+            f"waiting before sync retry {attempt + 1}/{SYNC_ATTEMPTS}.",
+            flush=True,
+        )
+        wait_command = [
             "argocd",
             *base_args,
             "app",
             "wait",
             app_name,
-            "--sync",
-            "--health",
             "--operation",
             "--timeout",
-            str(timeout),
-        ],
+            str(remaining),
+        ]
+        print(f"Running: {' '.join(wait_command)}", flush=True)
+        wait_result = preview.run(wait_command, cwd=repo, allow_failure=True)
+        if wait_result.returncode != 0:
+            print(
+                f"{app_name}: the previous operation did not complete cleanly; "
+                "retrying the approved sync while time remains.",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    remaining = max(0, math.ceil(deadline - time.monotonic()))
+    if remaining <= 0:
+        print(f"{app_name}: timed out before the approved sync could be verified.", file=sys.stderr)
+        raise SystemExit(1)
+
+    wait_command = [
+        "argocd",
+        *base_args,
+        "app",
+        "wait",
+        app_name,
+        "--sync",
+        "--health",
+        "--operation",
+        "--timeout",
+        str(remaining),
     ]
-    for command in commands:
-        print(f"Running: {' '.join(command)}")
-        preview.run(command, cwd=repo)
+    print(f"Running: {' '.join(wait_command)}", flush=True)
+    preview.run(wait_command, cwd=repo)
 
 
 def main() -> int:
@@ -144,7 +174,7 @@ def main() -> int:
     removed_apps = sorted(set(reasons) - set(head_apps_by_name))
 
     if removed_apps:
-        print("Application deletions are not performed before merge: " + ", ".join(removed_apps))
+        print("Application deletions require manual cleanup: " + ", ".join(removed_apps))
 
     if selected_apps and not args.dry_run:
         available, unavailable_reason = preview.argo_available()
@@ -161,38 +191,30 @@ def main() -> int:
     metadata_apps: list[dict[str, Any]] = []
     for app in selected_apps:
         source_path = repo / app.manifest_path
-        document = preview.load_yaml_document(source_path.read_text(encoding="utf-8"))
+        source_bytes = source_path.read_bytes()
+        source_text = source_bytes.decode("utf-8")
+        document = preview.load_yaml_document(source_text)
         if not document:
             raise ValueError(f"Unable to parse Application manifest: {app.manifest_path}")
 
         app_name = application_name(document)
-        pinned_sources = pin_current_repo_sources(
-            document,
-            current_repo_urls=current_repo_urls,
-            head_sha=args.head,
-            normalize_repo_url=preview.normalize_repo_url,
-        )
         output_path = output_dir / f"{app_name}.yaml"
-        output_path.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        output_path.write_bytes(source_bytes)
         generated_apps.append((app_name, output_path))
         metadata_apps.append(
             {
                 "name": app_name,
                 "namespace": app.namespace or "-",
                 "reasons": sorted(reasons[app_name]),
-                "pinnedSources": pinned_sources,
             }
         )
 
         reason_text = ", ".join(sorted(reasons[app_name]))
-        print(
-            f"{app_name}: {reason_text}; "
-            f"pinned {pinned_sources} homelab-ops source(s) to {args.head}"
-        )
+        print(f"{app_name}: {reason_text}; using merged Application source revisions")
 
     metadata = {
         "prNumber": args.pr_number or "",
-        "headSha": args.head,
+        "mergeSha": args.head,
         "applications": metadata_apps,
         "deferredDeletions": removed_apps,
     }
