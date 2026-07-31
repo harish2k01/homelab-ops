@@ -828,7 +828,7 @@ loki:
   # @schema skipProperties:true;additionalProperties:true
   # --  Optional pattern ingester configuration
   pattern_ingester:
-    enabled: false
+    enabled: true
   # @schema skipProperties:true;additionalProperties:true
   # --  Optional analytics configuration
   analytics: {}
@@ -7063,7 +7063,7 @@ monitoring:
   # Dashboards for monitoring Loki
   dashboards:
     # -- If enabled, create configmap resources with dashboards for monitoring Loki
-    enabled: true
+    enabled: false
     # @schema additionalProperties:{"type":"string"}
     # -- Additional annotations for the dashboards ConfigMap resources
     annotations: {}

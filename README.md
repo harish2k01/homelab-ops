@@ -152,7 +152,9 @@ Approval applies the unmodified Application definitions from the merge commit, s
 their declared source revisions, including `targetRevision: main`, remain intact.
 The workflow then starts an Argo CD sync and waits for each Application to become
 synced and healthy. If an automated or existing Argo CD operation is already in
-progress, it waits and retries without terminating that operation.
+progress, it waits and retries without terminating that operation. Transient
+manifest-generation deadline and transport failures are retried up to three times.
+Argo CD allows up to 300 seconds for server and controller calls to the repo server.
 
 Application deletions are reported in the deployment comment and require manual
 cleanup.
