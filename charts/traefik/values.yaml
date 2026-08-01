@@ -154,7 +154,7 @@ experimental:
 
 gateway:
   # -- When providers.kubernetesGateway.enabled, deploy a default gateway
-  enabled: true
+  enabled: false
   # -- Set a custom name to gateway
   name: ""
   # -- By default, Gateway is created in the same `Namespace` as Traefik.
