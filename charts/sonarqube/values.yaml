@@ -54,7 +54,7 @@ OpenShift:
 # Set the chart to use the latest released SonarQube Community Build
 community:
   enabled: true
-  buildNumber: "26.5.0.122743"
+  buildNumber: "26.7.0.124771"
 
 # The following settings are used when deploying to Azure Marketplace
 # global:
@@ -657,7 +657,7 @@ mcp:
 
   image:
     repository: sonarsource/sonarqube-mcp
-    tag: "1.18.1.2664"
+    tag: "1.22.0.3040"
     pullPolicy: IfNotPresent
     # pullSecrets:
     #   - name: my-repo-secret
