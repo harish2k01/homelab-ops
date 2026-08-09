@@ -29,9 +29,11 @@ args: []
 
 # Exposes the Web UI plus Syncthing device sync and local discovery ports.
 service:
-  type: ClusterIP
-  annotations: {}
-  externalTrafficPolicy: ""
+  type: LoadBalancer
+  annotations:
+    metallb.io/allow-shared-ip: homelab-gateway
+    metallb.io/loadBalancerIPs: 10.10.10.252
+  externalTrafficPolicy: Cluster
   ports:
     - name: http
       port: 8384
