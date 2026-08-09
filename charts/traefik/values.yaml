@@ -1124,6 +1124,7 @@ service:
   # -- Additional annotations applied to both TCP and UDP services (e.g. for cloud provider specific config)
   annotations:
     metallb.universe.tf/loadBalancerIPs: 10.10.10.252
+    metallb.io/allow-shared-ip: homelab-gateway
   # -- Additional annotations for TCP service only
   annotationsTCP: {}
   # -- Additional annotations for UDP service only
