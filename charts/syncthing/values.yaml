@@ -1,0 +1,138 @@
+replicaCount: 1
+
+# Container image. Pin the tag for repeatable sync infrastructure rollouts.
+image:
+  repository: syncthing/syncthing
+  tag: "2.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+
+# The official image uses PUID/PGID for file ownership and STGUIADDRESS to bind
+# the Web UI to the pod network instead of localhost.
+env:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: Asia/Kolkata
+  STGUIADDRESS: 0.0.0.0:8384
+
+envFrom: []
+command: []
+args: []
+
+# Exposes the Web UI plus Syncthing device sync and local discovery ports.
+service:
+  type: ClusterIP
+  annotations: {}
+  externalTrafficPolicy: ""
+  ports:
+    - name: http
+      port: 8384
+      targetPort: http
+      protocol: TCP
+    - name: sync-tcp
+      port: 22000
+      targetPort: sync-tcp
+      protocol: TCP
+    - name: sync-udp
+      port: 22000
+      targetPort: sync-udp
+      protocol: UDP
+    - name: discovery
+      port: 21027
+      targetPort: discovery
+      protocol: UDP
+
+containerPorts:
+  - name: http
+    containerPort: 8384
+    protocol: TCP
+  - name: sync-tcp
+    containerPort: 22000
+    protocol: TCP
+  - name: sync-udp
+    containerPort: 22000
+    protocol: UDP
+  - name: discovery
+    containerPort: 21027
+    protocol: UDP
+
+# Persistent Syncthing home. The official image stores config under
+# /var/syncthing/config and the default Sync folder below /var/syncthing.
+persistence:
+  config:
+    enabled: true
+    mountPath: /var/syncthing
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 512Mi
+    storageClassName: longhorn
+
+# Optional existing PVC mounts for folders Syncthing should manage. Configure
+# matching folder paths in the Syncthing Web UI after mounting them here.
+syncFolders:
+  enabled: true
+  existingClaim: syncthing-warehouse-pvc
+  readOnly: false
+  mounts:
+    - mountPath: /data/warehouse
+
+extraVolumes: []
+extraVolumeMounts: []
+
+# Optional Kubernetes Ingress for the Web UI. Sync and discovery ports still use
+# the Service.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+# Optional Gateway API HTTPRoute for the Web UI.
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - syncthing.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+resources: {}
+
+livenessProbe:
+  httpGet:
+    path: /rest/noauth/health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /rest/noauth/health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
