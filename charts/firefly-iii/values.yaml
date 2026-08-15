@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: fireflyiii/core
   pullPolicy: IfNotPresent
-  tag: "version-6.6.1"
+  tag: "version-6.6.6"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -99,7 +99,7 @@ cronjob:
   image:
     repository: curlimages/curl
     pullPolicy: IfNotPresent
-    tag: "8.19.0"
+    tag: "8.21.0"
   resources: {}
 
 firefly:
