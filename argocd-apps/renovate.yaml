@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://renovatebot.github.io/helm-charts
       chart: renovate
-      targetRevision: 46.138.0
+      targetRevision: 46.275.3
       helm:
         releaseName: renovate
         valueFiles:
