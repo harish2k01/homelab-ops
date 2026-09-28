@@ -14,6 +14,7 @@ httpRoute:
       sectionName: websecure
   hostnames:
     - harish2k01.xyz
+    - portfolio.k8s.harish2k01.xyz
 resources:
   requests:
     cpu: 10m
