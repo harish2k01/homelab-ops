@@ -1,0 +1,23 @@
+# Environment overrides for helm-charts/portfolio-next (published chart 0.1.0).
+replicaCount: 2
+image:
+  repository: ghcr.io/harish2k01/portfolio-next
+  tag: v0.1.0
+  # The release workflow fills this with the verified image index digest.
+  digest: ""
+  pullPolicy: IfNotPresent
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - harish2k01.xyz
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi

@@ -78,7 +78,7 @@ The cluster is managed with a declarative GitOps workflow:
 - Homepage
 - Immich
 - Jellyfin
-- Portfolio dev/prod
+- Portfolio dev/prod (legacy site at `v1.harish2k01.xyz`) and Portfolio Next (`harish2k01.xyz`)
 - Portfolio Tracker
 - Prowlarr
 - qBittorrent
@@ -105,6 +105,7 @@ Local workloads are deployed directly from charts in this repository, including 
 - `charts/grafana-dashboards`
 - `charts/portfolio-dev`
 - `charts/portfolio-prod`
+- `charts/portfolio-next` (values for the published `portfolio-next` chart)
 - `charts/pve-exporter`
 - `charts/qbittorrent-exporter`
 
