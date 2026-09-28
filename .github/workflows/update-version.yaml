@@ -76,10 +76,10 @@ jobs:
             exit 0
           fi
           git commit -m "chore($APP_NAME): deploy $IMAGE_TAG${IMAGE_DIGEST:+ at $IMAGE_DIGEST}"
-          # Updates for different apps may finish together. Preserve their commits.
+          # Refresh and rebase between attempts; the lease prevents overwriting unseen commits.
           for attempt in 1 2 3; do
-            if git push origin HEAD:main; then exit 0; fi
+            if git push --force-with-lease origin HEAD:main; then exit 0; fi
             git pull --rebase origin main
           done
-          echo 'Could not push deployment update after three attempts.' >&2
+          echo 'Could not push deployment update after three attempts. Verify the GitHub App can bypass main branch protection.' >&2
           exit 1
