@@ -86,7 +86,7 @@ httpRoute:
   # Hostnames matching HTTP header.
   hostnames:
     - v1.harish2k01.xyz
-    - portfolio.k8s.harish2k01.xyz
+    - portfolio-v1.k8s.harish2k01.xyz
   # List of rules and filters applied.
   rules:
     - matches:
