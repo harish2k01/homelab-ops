@@ -1,0 +1,29 @@
+name: Validate version updater
+on:
+  pull_request:
+    paths:
+      - .github/scripts/update-version*.mjs
+      - .github/workflows/update-version*.yaml
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/update-version*.mjs
+      - .github/workflows/update-version*.yaml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install yq
+        run: |
+          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - run: node --test .github/scripts/update-version.test.mjs

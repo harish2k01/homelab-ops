@@ -1,0 +1,31 @@
+# Dedicated runner for portfolio-next validation, releases, builds and GitOps updates.
+githubConfigUrl: https://github.com/harish2k01/portfolio-next
+githubConfigSecret: arc-github-app
+runnerScaleSetName: portfolio-next-runner
+minRunners: 0
+maxRunners: 3
+# Match the existing Portfolio runner: ARC creates an ephemeral DinD sidecar.
+containerMode:
+  type: dind
+# No mounted Kubernetes credentials or persistent workspace in the runner.
+template:
+  spec:
+    automountServiceAccountToken: false
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "1"
+            memory: 2Gi
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller
