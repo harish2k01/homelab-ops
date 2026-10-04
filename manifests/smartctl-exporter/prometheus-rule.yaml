@@ -9,15 +9,36 @@ spec:
   groups:
     - name: disk-smart-health
       rules:
+        - alert: SSDExtendedCollectionFailed
+          expr: smartctl_extended_collection_success{namespace="monitoring"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Extended SMART read failed on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDExtendedCollectionStale
+          expr: time() - smartctl_extended_collection_timestamp_seconds{namespace="monitoring"} > 900
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Extended SMART report stale on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDExtendedExporterUnavailable
+          expr: up{namespace="monitoring",job=~".*smartctl.*",endpoint="extended"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Extended SMART endpoint unavailable on {{ $labels.node }}'
         - alert: SSDExporterUnavailable
-          expr: up{namespace="monitoring",job=~".*smartctl.*"} == 0
+          expr: up{namespace="monitoring",job=~".*smartctl.*",endpoint="metrics"} == 0
           for: 10m
           labels:
             severity: warning
           annotations:
             summary: 'SMART exporter unavailable on {{ $labels.node }}'
         - alert: SSDSMARTTelemetryMissing
-          expr: up{namespace="monitoring",job=~".*smartctl.*"} == 1 unless on(instance, job) smartctl_device_smart_status{namespace="monitoring"}
+          expr: up{namespace="monitoring",job=~".*smartctl.*",endpoint="metrics"} == 1 unless on(instance, job) smartctl_device_smart_status{namespace="monitoring"}
           for: 15m
           labels:
             severity: warning

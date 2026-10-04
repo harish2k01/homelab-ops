@@ -54,7 +54,40 @@ spec:
             - name: discovery
               mountPath: /discovery
               readOnly: true
+            - name: reports
+              mountPath: /data
+        - name: extended
+          image: "{{ .Values.extended.image.repository }}:{{ .Values.extended.image.tag }}"
+          command: [python, -B, /discovery/extended.py]
+          securityContext:
+            runAsUser: 65534
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: extended
+              containerPort: 9634
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: extended
+          resources:
+            {{- toYaml .Values.extended.resources | nindent 12 }}
+          volumeMounts:
+            - name: discovery
+              mountPath: /discovery
+              readOnly: true
+            - name: reports
+              mountPath: /data
+              readOnly: true
       volumes:
+        - name: reports
+          emptyDir:
+            sizeLimit: 64Mi
         - name: dev
           hostPath:
             path: /dev

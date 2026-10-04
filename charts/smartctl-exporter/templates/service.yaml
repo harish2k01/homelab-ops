@@ -13,3 +13,6 @@ spec:
     - name: metrics
       port: 9633
       targetPort: metrics
+    - name: extended
+      port: 9634
+      targetPort: extended
