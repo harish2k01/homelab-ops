@@ -58,6 +58,7 @@ The cluster is managed with a declarative GitOps workflow:
 - Robusta
 - Scrutiny
 - Proxmox exporter
+- SMART exporter for physical Talos SSDs (see `manifests/smartctl-exporter/README.md`)
 - qBittorrent exporter
 
 ### 🤖 CI and automation
