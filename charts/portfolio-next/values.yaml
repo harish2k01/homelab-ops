@@ -2,9 +2,9 @@
 replicaCount: 2
 image:
   repository: ghcr.io/harish2k01/portfolio-next
-  tag: v0.1.0
+  tag: v0.3.6
   # The release workflow fills this with the verified image index digest.
-  digest: ""
+  digest: "sha256:eb738149f0cd8e3e575863a557d4de1ccd35db0141dc7a5472c366f1a35f5cd2"
   pullPolicy: IfNotPresent
 httpRoute:
   enabled: true
@@ -14,6 +14,7 @@ httpRoute:
       sectionName: websecure
   hostnames:
     - harish2k01.xyz
+    - portfolio.k8s.harish2k01.xyz
 resources:
   requests:
     cpu: 10m
