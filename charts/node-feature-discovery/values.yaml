@@ -1,0 +1,24 @@
+# Automatic hardware classification on every node.
+master:
+  config:
+    labelWhiteList: '^cpu-model.hypervisor$'
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {memory: 256Mi}
+worker:
+  config:
+    core:
+      sleepInterval: 60s
+      featureSources: [cpu]
+      labelSources: [cpu]
+      labelWhiteList: '^cpu-model.hypervisor$'
+  tolerations:
+    - operator: Exists
+      effect: NoSchedule
+  resources:
+    requests: {cpu: 5m, memory: 64Mi}
+    limits: {memory: 128Mi}
+gc:
+  resources:
+    requests: {cpu: 5m, memory: 64Mi}
+    limits: {memory: 128Mi}

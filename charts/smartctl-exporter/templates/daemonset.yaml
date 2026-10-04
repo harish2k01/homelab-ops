@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: prometheus-smartctl-exporter
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-smartctl-exporter
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus-smartctl-exporter
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/discovery: {{ include (print $.Template.BasePath "/discovery-configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: exporter
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/bin/sh, /discovery/discover.sh]
+          env:
+            - name: COLLECTION_INTERVAL
+              value: {{ .Values.collectionInterval | quote }}
+            - name: DISCOVERY_INTERVAL_SECONDS
+              value: {{ .Values.discoveryIntervalSeconds | quote }}
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          ports:
+            - name: metrics
+              containerPort: 9633
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: dev
+              mountPath: /hostdev
+              readOnly: true
+            - name: discovery
+              mountPath: /discovery
+              readOnly: true
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+            type: Directory
+        - name: discovery
+          configMap:
+            name: {{ .Release.Name }}-discovery

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: smartctl-exporter
+description: Physical ATA and NVMe SMART collection on automatically discovered bare-metal nodes
+type: application
+version: 0.1.0
+appVersion: v0.14.0

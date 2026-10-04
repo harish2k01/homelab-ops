@@ -1,21 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: smartctl-exporter
+  name: node-feature-discovery
   namespace: argocd
 spec:
   project: default
   sources:
-    - repoURL: https://github.com/harish2k01/homelab-ops
-      path: charts/smartctl-exporter
-      targetRevision: main
+    - repoURL: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+      chart: node-feature-discovery
+      targetRevision: 0.19.0
       helm:
-        releaseName: smartctl-exporter
+        releaseName: node-feature-discovery
         valueFiles:
-          - values.yaml
+          - $values/charts/node-feature-discovery/values.yaml
     - repoURL: https://github.com/harish2k01/homelab-ops
       targetRevision: main
-      path: manifests/smartctl-exporter
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
