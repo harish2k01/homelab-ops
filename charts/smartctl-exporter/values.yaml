@@ -10,6 +10,13 @@ tolerations:
     effect: NoSchedule
 collectionInterval: 300s
 discoveryIntervalSeconds: 300
+extended:
+  image:
+    repository: python
+    tag: 3.13.7-alpine3.22
+  resources:
+    requests: {cpu: 5m, memory: 32Mi}
+    limits: {memory: 128Mi}
 serviceMonitor:
   interval: 60s
   scrapeTimeout: 30s

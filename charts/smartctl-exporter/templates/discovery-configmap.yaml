@@ -6,6 +6,7 @@ data:
   discover.sh: |
     #!/bin/sh
     set -eu
+    umask 022
     exporter_pid=''
     stop() {
       if [ -n "$exporter_pid" ]; then
@@ -29,6 +30,14 @@ data:
     previous='__initial__'
     while :; do
       devices=$(discover)
+      # Cache the complete read-only report; no self-tests or settings changes.
+      printf '%s\n' "$devices" > /data/active.tmp
+      mv /data/active.tmp /data/active
+      for device in $devices; do
+        name=${device##*/}
+        timeout 30 /usr/sbin/smartctl -x --json "$device" > "/data/$name.tmp" || true
+        mv "/data/$name.tmp" "/data/$name.json"
+      done
       if [ "$devices" != "$previous" ]; then
         stop
         exporter_pid=''
@@ -52,3 +61,5 @@ data:
       sleep "$DISCOVERY_INTERVAL_SECONDS" &
       wait $! || true
     done
+  extended.py: |
+{{ .Files.Get "files/extended.py" | indent 4 }}

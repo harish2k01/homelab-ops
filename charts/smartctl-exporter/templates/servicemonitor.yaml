@@ -19,3 +19,10 @@ spec:
         - action: replace
           sourceLabels: [__meta_kubernetes_pod_node_name]
           targetLabel: node
+    - port: extended
+      interval: {{ .Values.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+      relabelings:
+        - action: replace
+          sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node

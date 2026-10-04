@@ -115,6 +115,26 @@ needed for physical disk discovery. Its ServiceMonitor and custom PrometheusRule
 match the `kube-prometheus-stack` release label. Grafana Git Sync reads
 `Infra/ssd-health.json` from the separate `grafana-dashboards` repository.
 
+The same discovery loop caches full read-only `smartctl -x --json` reports every
+five minutes with a 30-second per-device timeout. A Python sidecar without host
+device access exposes all numeric report fields and text descriptions on the
+internal Service port 9634. Mutable raw display strings remain in JSON rather
+than changing Prometheus labels on every collection; their numeric values are
+exported. The dashboard shows only essential health readings, repeated for each
+node/disk pair. Failed reads, stale reports and endpoint failures have alerts.
+
+For a complete report during troubleshooting:
+
+```sh
+kubectl -n monitoring port-forward pod/<smartctl-exporter-pod> 9634:9634
+curl http://127.0.0.1:9634/reports/sda.json
+```
+
+Use the discovered device name instead of `sda` for another disk. The endpoint
+has no public route; reports are ephemeral and refreshed rather than archived.
+Tests for parsing, device failures, report retrieval and path handling run with
+`python -B charts/smartctl-exporter/tests/test_extended.py`.
+
 Follow the existing `olympus` Application approval workflow for both Applications.
 Sync NFD first; exporter scheduling begins after its labels appear. Verify:
 
@@ -126,8 +146,8 @@ kubectl -n monitoring get daemonset,pods,servicemonitor,prometheusrule
 Expect one exporter per classified bare-metal node with eligible disks. Verify
 Prometheus target/rule health and Grafana rendering after Git Sync. VM backing
 SSD health must be collected on Proxmox. Missing SMART metrics are unavailable
-telemetry. SATA wear attributes vary by vendor; NVMe panels remain empty for SATA
-drives. The initial temperature alert is 60 C for 15 minutes; tune it to vendor
+telemetry. SATA wear attributes vary by vendor; unsupported readings are omitted
+from the health table. The initial temperature alert is 60 C for 15 minutes; tune it to vendor
 ratings. Collection does not start SMART self-tests.
 
 Most applications are represented by an Argo CD `Application` in `argocd-apps/`.
