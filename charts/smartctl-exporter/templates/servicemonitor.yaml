@@ -16,5 +16,6 @@ spec:
       interval: {{ .Values.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
       relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
+        - action: replace
+          sourceLabels: [__meta_kubernetes_pod_node_name]
           targetLabel: node
