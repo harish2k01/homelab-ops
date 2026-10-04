@@ -1,34 +1,20 @@
-# Physical SATA boot SSDs verified with talosctl get disks.
-# Explicit selection avoids collecting Longhorn iSCSI virtual volumes.
-config:
-  devices:
-    - /dev/sda
-common:
-  config:
-    collect_not_more_than_period: 300s
-affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values: [hermes, athena]
+image:
+  repository: quay.io/prometheuscommunity/smartctl-exporter
+  tag: v0.14.0
+  pullPolicy: IfNotPresent
+# NFD sets this automatically; unclassified nodes remain excluded.
+nodeSelector:
+  feature.node.kubernetes.io/cpu-model.hypervisor: none
 tolerations:
   - operator: Exists
     effect: NoSchedule
+collectionInterval: 300s
+discoveryIntervalSeconds: 300
 serviceMonitor:
-  enabled: true
-  extraLabels:
-    release: kube-prometheus-stack
   interval: 60s
   scrapeTimeout: 30s
-  relabelings:
-    - sourceLabels: [__meta_kubernetes_pod_node_name]
-      targetLabel: node
-# Custom rules also cover missing SMART data and SATA raw attributes.
-prometheusRules:
-  enabled: false
+  labels:
+    release: kube-prometheus-stack
 resources:
   requests:
     cpu: 10m

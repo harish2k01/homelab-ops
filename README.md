@@ -58,7 +58,7 @@ The cluster is managed with a declarative GitOps workflow:
 - Robusta
 - Scrutiny
 - Proxmox exporter
-- SMART exporter for physical Talos SSDs (see `manifests/smartctl-exporter/README.md`)
+- Node Feature Discovery and SMART exporter for physical Talos SSDs
 - qBittorrent exporter
 
 ### 🤖 CI and automation
@@ -92,6 +92,43 @@ The cluster is managed with a declarative GitOps workflow:
 - Vaultwarden
 
 ## 🔄 Deployment Model
+
+### Automatic physical SSD monitoring
+
+The `node-feature-discovery` Application detects hardware every minute and sets
+`feature.node.kubernetes.io/cpu-model.hypervisor`. The `smartctl-exporter` local
+chart selects nodes with value `none`; nodes with a detected hypervisor or no
+classification are excluded. New bare-metal nodes join collection automatically,
+including control-plane nodes, without updating hostnames or manually labeling
+nodes. Hypervisors that hide their identity can evade hardware detection.
+
+The exporter discovers host ATA/NVMe identifiers under `/dev/disk/by-id`, excludes
+partitions, deduplicates aliases, and rechecks disks every five minutes. It
+restarts its exporter process when disks are added or removed. Longhorn iSCSI
+volumes are excluded; SAS/SCSI and USB bridges without ATA/NVMe identifiers are
+outside this discovery policy. A node without eligible disks stays unready so
+the exporter pod availability alert can report missing collection.
+
+The local chart uses upstream `smartctl-exporter:v0.14.0` with a discovery wrapper
+because the upstream Helm chart does not provide the command/volume customization
+needed for physical disk discovery. Its ServiceMonitor and custom PrometheusRule
+match the `kube-prometheus-stack` release label. Grafana Git Sync reads
+`Infra/ssd-health.json` from the separate `grafana-dashboards` repository.
+
+Follow the existing `olympus` Application approval workflow for both Applications.
+Sync NFD first; exporter scheduling begins after its labels appear. Verify:
+
+```sh
+kubectl get nodes -L feature.node.kubernetes.io/cpu-model.hypervisor
+kubectl -n monitoring get daemonset,pods,servicemonitor,prometheusrule
+```
+
+Expect one exporter per classified bare-metal node with eligible disks. Verify
+Prometheus target/rule health and Grafana rendering after Git Sync. VM backing
+SSD health must be collected on Proxmox. Missing SMART metrics are unavailable
+telemetry. SATA wear attributes vary by vendor; NVMe panels remain empty for SATA
+drives. The initial temperature alert is 60 C for 15 minutes; tune it to vendor
+ratings. Collection does not start SMART self-tests.
 
 Most applications are represented by an Argo CD `Application` in `argocd-apps/`.
 

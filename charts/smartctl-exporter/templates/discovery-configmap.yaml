@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-discovery
+data:
+  discover.sh: |
+    #!/bin/sh
+    set -eu
+    exporter_pid=''
+    stop() {
+      if [ -n "$exporter_pid" ]; then
+        kill "$exporter_pid" 2>/dev/null || true
+        wait "$exporter_pid" 2>/dev/null || true
+      fi
+    }
+    trap 'stop; exit 0' TERM INT
+    trap stop EXIT
+    discover() {
+      # Udev ATA/NVMe identifiers exclude Longhorn iSCSI volumes.
+      for link in /hostdev/disk/by-id/ata-* /hostdev/disk/by-id/nvme-*; do
+        [ -L "$link" ] || continue
+        case "$link" in *-part[0-9]*) continue ;; esac
+        target=$(readlink "$link")
+        device="/dev/${target##*/}"
+        [ -b "$device" ] || continue
+        printf '%s\n' "$device"
+      done | sort -u
+    }
+    previous='__initial__'
+    while :; do
+      devices=$(discover)
+      if [ "$devices" != "$previous" ]; then
+        stop
+        exporter_pid=''
+        if [ -n "$devices" ]; then
+          set -- /bin/smartctl_exporter "--smartctl.interval=$COLLECTION_INTERVAL" --smartctl.rescan=0s
+          for device in $devices; do
+            set -- "$@" "--smartctl.device=$device"
+          done
+          printf 'SMART physical devices: %s\n' "$devices"
+          "$@" &
+          exporter_pid=$!
+        else
+          echo 'No physical ATA/NVMe devices found; waiting for discovery.'
+        fi
+        previous=$devices
+      fi
+      if [ -n "$exporter_pid" ] && ! kill -0 "$exporter_pid" 2>/dev/null; then
+        echo 'SMART exporter exited unexpectedly.' >&2
+        exit 1
+      fi
+      sleep "$DISCOVERY_INTERVAL_SECONDS" &
+      wait $! || true
+    done
