@@ -1,0 +1,90 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: smartctl-exporter
+  namespace: disk-monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: disk-smart-health
+      rules:
+        - alert: SSDExporterUnavailable
+          expr: up{namespace="disk-monitoring",job=~".*smartctl.*"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'SMART exporter unavailable on {{ $labels.node }}'
+        - alert: SSDSMARTTelemetryMissing
+          expr: up{namespace="disk-monitoring",job=~".*smartctl.*"} == 1 unless on(instance, job) smartctl_device_smart_status{namespace="disk-monitoring"}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'SMART health data missing on {{ $labels.node }}'
+            description: 'Exporter responds but no disk health status is available. Check device access and SMART support.'
+        - alert: SSDExporterPodMissing
+          expr: kube_daemonset_status_desired_number_scheduled{namespace="disk-monitoring",daemonset=~".*smartctl.*"} > kube_daemonset_status_number_ready{namespace="disk-monitoring",daemonset=~".*smartctl.*"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: SMART exporter has missing or unready pods
+        - alert: SSDSMARTFailed
+          expr: smartctl_device_smart_status{namespace="disk-monitoring"} != 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'SMART failure on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDHighTemperature
+          expr: smartctl_device_temperature{namespace="disk-monitoring",temperature_type="current"} > 60
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'SSD above 60 C on {{ $labels.node }} {{ $labels.device }}'
+            description: 'Initial threshold; adjust to the SSD vendor rating.'
+        - alert: SSDUnreadableSectors
+          expr: smartctl_device_attribute{namespace="disk-monitoring",attribute_value_type="raw",attribute_id=~"197|198"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'Pending or uncorrectable sectors on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDReallocatedSectors
+          expr: smartctl_device_attribute{namespace="disk-monitoring",attribute_value_type="raw",attribute_id="5"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Reallocated sectors on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDNVMeCriticalWarning
+          expr: smartctl_device_critical_warning{namespace="disk-monitoring"} != 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'NVMe critical warning on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDNVMeMediaErrors
+          expr: smartctl_device_media_errors{namespace="disk-monitoring"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: 'NVMe media errors on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDNVMeSpareLow
+          expr: smartctl_device_available_spare{namespace="disk-monitoring"} < smartctl_device_available_spare_threshold{namespace="disk-monitoring"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'NVMe spare below vendor threshold on {{ $labels.node }} {{ $labels.device }}'
+        - alert: SSDNVMeEnduranceUsed
+          expr: smartctl_device_percentage_used{namespace="disk-monitoring"} >= 90
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: 'NVMe estimated endurance at least 90% used on {{ $labels.node }} {{ $labels.device }}'
