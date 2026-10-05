@@ -2,9 +2,9 @@
 replicaCount: 2
 image:
   repository: ghcr.io/harish2k01/portfolio-next
-  tag: v0.3.6
+  tag: v0.3.7
   # The release workflow fills this with the verified image index digest.
-  digest: "sha256:eb738149f0cd8e3e575863a557d4de1ccd35db0141dc7a5472c366f1a35f5cd2"
+  digest: "sha256:cc59b88a61ce88a470bb82d5fbe518fc058d3824c0115eaf4185961c270b2b54"
   pullPolicy: IfNotPresent
 httpRoute:
   enabled: true
