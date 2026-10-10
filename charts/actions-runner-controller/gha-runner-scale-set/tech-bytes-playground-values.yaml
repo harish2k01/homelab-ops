@@ -1,10 +1,10 @@
-# Dedicated runner for portfolio-next validation, releases, builds and GitOps updates.
-githubConfigUrl: https://github.com/harish2k01/portfolio-next
+# Dedicated runner for tech-bytes-playground Ghost theme validation, packaging and releases.
+githubConfigUrl: https://github.com/harish2k01/tech-bytes-playground
 githubConfigSecret: arc-github-app
-runnerScaleSetName: portfolio-next-runner
+runnerScaleSetName: tech-bytes-playground-runner
 minRunners: 0
 maxRunners: 3
-# Match the existing Portfolio runner: ARC creates an ephemeral DinD sidecar.
+# Job containers install their own Node.js build and release tools.
 containerMode:
   type: dind
 # No mounted Kubernetes credentials or persistent workspace in the runner.
