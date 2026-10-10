@@ -7,7 +7,7 @@ spec:
   project: default
   sources:
     - repoURL: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
-      targetRevision: 0.14.0
+      targetRevision: 0.15.0
       path: .
       helm:
         releaseName: railwatch-runner-set
