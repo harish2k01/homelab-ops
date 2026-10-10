@@ -4,9 +4,10 @@ githubConfigSecret: arc-github-app
 runnerScaleSetName: tech-bytes-playground-runner
 minRunners: 0
 maxRunners: 3
-# Job containers install their own Node.js build and release tools.
+# Docker remains available for builds; workflow steps run directly in the runner.
 containerMode:
   type: dind
+# Match existing ARC runners: sudo installs workflow dependencies inside the ephemeral runner.
 # No mounted Kubernetes credentials or persistent workspace in the runner.
 template:
   spec:
@@ -15,10 +16,6 @@ template:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
         command: ["/home/runner/run.sh"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ALL]
         resources:
           requests:
             cpu: "500m"

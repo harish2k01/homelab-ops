@@ -7,6 +7,7 @@ maxRunners: 3
 # Match the existing Portfolio runner: ARC creates an ephemeral DinD sidecar.
 containerMode:
   type: dind
+# Match existing ARC runners: sudo installs workflow dependencies inside the ephemeral runner.
 # No mounted Kubernetes credentials or persistent workspace in the runner.
 template:
   spec:
@@ -15,10 +16,6 @@ template:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
         command: ["/home/runner/run.sh"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ALL]
         resources:
           requests:
             cpu: "500m"
