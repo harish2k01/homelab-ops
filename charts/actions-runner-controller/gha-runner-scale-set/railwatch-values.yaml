@@ -21,8 +21,8 @@ template:
             cpu: "500m"
             memory: "1Gi"
           limits:
-            cpu: "1"
-            memory: "2Gi"
+            cpu: "1500m"
+            memory: "2.5Gi"
 controllerServiceAccount:
   namespace: arc-systems
   name: arc-gha-rs-controller
