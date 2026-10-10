@@ -144,3 +144,8 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Route Network / Social Web requests to Ghost's hosted ActivityPub service.
+activityPub:
+  enabled: true
+  target: https://ap.ghost.org
