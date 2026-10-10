@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: ghost
-      targetRevision: 0.1.2
+      targetRevision: 0.2.0
       helm:
         releaseName: ghost
         valueFiles:
@@ -22,10 +22,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ghost
+  # StatefulSet claim-template labels are immutable. Chart version labels may
+  # change without replacing the database or its persistent volume.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: ghost-mysql
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/metadata/labels
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
   revisionHistoryLimit: 3
