@@ -1,0 +1,31 @@
+# Dedicated runner for railwatch database/browser validation, releases and image builds.
+githubConfigUrl: https://github.com/harish2k01/railwatch
+githubConfigSecret: arc-github-app
+runnerScaleSetName: railwatch-runner
+minRunners: 0
+maxRunners: 3
+# PostgreSQL service containers and Buildx builds require an ephemeral DinD sidecar.
+containerMode:
+  type: dind
+# No mounted Kubernetes credentials or persistent workspace in the runner.
+template:
+  spec:
+    automountServiceAccountToken: false
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 4Gi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller

@@ -1,0 +1,31 @@
+# Dedicated runner for tech-bytes-playground Ghost theme validation, packaging and releases.
+githubConfigUrl: https://github.com/harish2k01/tech-bytes-playground
+githubConfigSecret: arc-github-app
+runnerScaleSetName: tech-bytes-playground-runner
+minRunners: 0
+maxRunners: 3
+# Job containers install their own Node.js build and release tools.
+containerMode:
+  type: dind
+# No mounted Kubernetes credentials or persistent workspace in the runner.
+template:
+  spec:
+    automountServiceAccountToken: false
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "1"
+            memory: 2Gi
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller

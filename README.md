@@ -64,7 +64,7 @@ The cluster is managed with a declarative GitOps workflow:
 ### 🤖 CI and automation
 
 - GitHub Actions Runner Controller
-- Runner scale sets for `homelab-ops`, `helm-charts`, and `portfolio`
+- Repository-scoped runner scale sets for `homelab-ops`, `helm-charts`, `Portfolio`, `portfolio-next`, `portfolio-tracker`, `PaperVault`, `railwatch`, and `tech-bytes-playground` (Ghost theme)
 - Renovate
 
 ### 📦 Applications
