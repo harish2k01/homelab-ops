@@ -423,8 +423,8 @@ template:
             cpu: "500m"
             memory: "1Gi"
           limits:
-            cpu: "1"
-            memory: "2Gi"
+            cpu: "1500m"
+            memory: "2.5Gi"
 ## Optional controller service account that needs to have required Role and RoleBinding
 ## to operate this gha-runner-scale-set installation.
 ## The helm chart will try to find the controller deployment and its service account at installation time.
