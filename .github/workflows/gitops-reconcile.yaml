@@ -108,8 +108,55 @@ jobs:
           path: gitops-baseline/baseline.json
           overwrite: true
           retention-days: 90
-  deploy:
+  plan:
     needs: resolve
+    runs-on: homelab-ops-runner
+    timeout-minutes: 10
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check -r .github/scripts/requirements-gitops.txt
+      - name: Plan before requesting deployment authorization
+        id: plan
+        env:
+          GITHUB_BASE_SHA: ${{ needs.resolve.outputs.base }}
+          GITHUB_HEAD_SHA: ${{ needs.resolve.outputs.head }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RECONCILE_ALL: ${{ needs.resolve.outputs.all_apps }}
+        run: |
+          args=(--dry-run)
+          if [ "$RECONCILE_ALL" = true ]; then args+=(--all); fi
+          python -u .github/scripts/gitops-pr-apply.py "${args[@]}"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          results = json.loads(Path('gitops-pr-apply-output/results.json').read_text())
+          changed = bool(results['applications'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"has_changes={str(changed).lower()}\n")
+          if not changed:
+              print('No affected Applications; deployment environment and credentials are not needed.')
+          PY
+      - name: Save planning result, including no-op reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: gitops-plan
+          path: gitops-pr-apply-output
+          overwrite: true
+          if-no-files-found: ignore
+          retention-days: 30
+  deploy:
+    needs: [resolve, plan]
+    if: needs.plan.outputs.has_changes == 'true'
     runs-on: homelab-ops-runner
     # The deployment token is an environment secret. Required reviewers must be
     # removed during migration; retaining the environment preserves secret scope.
@@ -161,7 +208,7 @@ jobs:
           # Rechecking newer main must not mark an older event SHA as the cursor.
           test "$EVENT_SHA" = "$CHECKED_SHA"
   report:
-    needs: [resolve, deploy]
+    needs: [resolve, plan, deploy]
     if: always() && needs.resolve.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -173,7 +220,7 @@ jobs:
       - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
-          name: gitops-reconciliation
+          name: ${{ needs.plan.outputs.has_changes == 'true' && 'gitops-reconciliation' || 'gitops-plan' }}
           path: gitops-pr-apply-output
       - name: Create friday-pa token
         id: app-token
@@ -187,8 +234,14 @@ jobs:
           GITOPS_COMMENT_MODE: deploy
           GITOPS_HEAD_SHA: ${{ needs.resolve.outputs.head }}
           GITOPS_BASE_SHA: ${{ needs.resolve.outputs.base }}
-          GITOPS_DEPLOY_RESULT: ${{ needs.deploy.result }}
+          GITOPS_DEPLOY_RESULT: ${{ needs.plan.result != 'success' && needs.plan.result || (needs.plan.outputs.has_changes == 'true' && needs.deploy.result || 'success (no deployment changes)') }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             await require('./.github/scripts/gitops-comments.cjs')({github, context, core});
+      - name: Verify cursor revision for no-op runs
+        if: needs.plan.outputs.has_changes == 'false'
+        env:
+          EVENT_SHA: ${{ github.sha }}
+          CHECKED_SHA: ${{ needs.resolve.outputs.head }}
+        run: test "$EVENT_SHA" = "$CHECKED_SHA"

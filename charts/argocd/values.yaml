@@ -474,6 +474,7 @@ configs:
     # @default -- `''` (See [values.yaml])
     policy.csv: |
       g, gitops-preview, role:readonly
+      p, gitops-pr-deployer, projects, get, default, allow
       p, gitops-pr-deployer, applications, get, default/*, allow
       p, gitops-pr-deployer, applications, create, default/*, allow
       p, gitops-pr-deployer, applications, update, default/*, allow
