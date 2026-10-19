@@ -30,7 +30,7 @@ concurrency:
 jobs:
   update-app-version:
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       APP_NAME: ${{ inputs.app_name }}
       IMAGE_TAG: ${{ inputs.image_tag }}
@@ -56,10 +56,8 @@ jobs:
         with:
           node-version: "24"
       - name: Install yq
-        run: |
-          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
-          chmod +x "$RUNNER_TEMP/yq"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+        timeout-minutes: 12
+        run: bash .github/scripts/install-yq.sh
       - name: Update deployment image identity
         run: node .github/scripts/update-version.mjs
       - name: Commit only changed deployment values
