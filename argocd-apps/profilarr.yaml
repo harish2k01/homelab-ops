@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://harish2k01.github.io/helm-charts
-      chart: profilarr
+    - repoURL: oci://ghcr.io/harish2k01/helm-charts/profilarr
       targetRevision: 0.1.0
+      path: .
       helm:
         releaseName: profilarr
         valueFiles:
