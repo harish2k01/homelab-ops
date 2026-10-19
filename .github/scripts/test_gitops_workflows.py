@@ -4,11 +4,30 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+import yaml
 
 from test_gitops import deploy, entry, g, plan_data
 
 
 class DeploymentBoundaries(unittest.TestCase):
+    def test_empty_plan_needs_no_cluster_access_and_records_no_changes(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo") as argo:
+            output = Path(directory)
+            self.assertFalse(deploy.reconcile(output, plan_data([]), output, dry_run=True))
+            argo.assert_not_called()
+            self.assertEqual(json.loads((output / "results.json").read_text())["applications"], [])
+            self.assertIn("No deployment changes", (output / "report.md").read_text())
+
+    def test_noop_job_graph_skips_environment_but_still_reports_and_checks_cursor(self):
+        workflow = Path(__file__).parents[1] / "workflows" / "gitops-reconcile.yaml"
+        jobs = yaml.safe_load(workflow.read_text())["jobs"]
+        self.assertNotIn("environment", jobs["plan"])
+        self.assertIn("plan", jobs["deploy"]["needs"])
+        self.assertEqual(jobs["deploy"]["if"], "needs.plan.outputs.has_changes == 'true'")
+        self.assertIn("plan", jobs["report"]["needs"])
+        cursor = next(step for step in jobs["report"]["steps"] if step.get("name") == "Verify cursor revision for no-op runs")
+        self.assertEqual(cursor["if"], "needs.plan.outputs.has_changes == 'false'")
+
     def test_failed_replan_cannot_publish_success_from_an_earlier_attempt(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)

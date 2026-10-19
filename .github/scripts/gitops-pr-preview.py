@@ -83,13 +83,7 @@ def evaluate(repo, data, output, *, offline=False):
                 resource_diff = g.manifest_diff(before, after, "base resources", "proposed resources")
                 (app_dir / "application.diff").write_text(spec_diff, encoding="utf-8")
                 (app_dir / "pr.diff").write_text(resource_diff, encoding="utf-8")
-                row["result"] = "resource changes" if resource_diff else "configuration only; no resource changes"
-                row["resourceCounts"] = g.change_counts(before, after)
-                if resource_diff:
-                    counts = row["resourceCounts"]
-                    row["result"] = ", ".join(f"{counts[key]} {key}" for key in ("added", "deleted", "modified"))
-                    if not any(counts.values()):
-                        row["result"] = "redacted Secret content changed"
+                row["prResourceCounts"] = g.change_counts(before, after)
                 row["prDiff"], row["specDiff"] = resource_diff, spec_diff
                 if not offline:
                     live = live_manifests.get(entry["name"])
@@ -98,10 +92,23 @@ def evaluate(repo, data, output, *, offline=False):
                     if live:
                         scopes.crds(g.cluster_key(live_apps[entry["name"]]), live, "live CRD", live=True)
                         live = scopes.normalize(live, live_apps[entry["name"]])
-                    live_diff = g.manifest_diff(live, after, "live resources", "proposed resources")
+                    # Removing an Application with retain leaves its workloads
+                    # running. A cascaded deletion instead removes them.
+                    if entry["action"] == "delete" and entry.get("deletion") == "retain":
+                        normalized, target, notices = live, live, []
+                    else:
+                        proposed_app = entry["after"]["document"] if entry["after"] else None
+                        normalized, target, notices = g.predict_sync(live_apps.get(entry["name"]), proposed_app, live, after)
+                    row["notices"] = [*row["notices"], *notices]
+                    live_diff = g.manifest_diff(normalized, target, "live resources", "predicted resources")
                     row["liveDiff"] = live_diff
+                    row["resourceCounts"] = g.change_counts(normalized, target)
+                    row["result"] = "Changes after sync" if live_diff else "No resource changes after sync"
+                    if entry["action"] == "delete" and entry.get("deletion") == "retain":
+                        row["result"] = "Application removed; resources retained"
                     (app_dir / "live.diff").write_text(live_diff, encoding="utf-8")
                 else:
+                    row["result"] = "Live comparison unavailable (offline)"
                     row["notices"] = [*row["notices"], "Offline: live comparison and ownership checks were not performed"]
                 if entry["after"]:
                     for resource in after:
@@ -132,6 +139,48 @@ def evaluate(repo, data, output, *, offline=False):
     return rows
 
 
+def render_comment(data, rows, *, offline=False):
+    lines = ["<!-- friday-pa:argocd-diff -->", "## GitOps PR Preview", "", "### Changes after sync", ""]
+    fatal = data.get("fatal", "")
+    if fatal:
+        lines += ["**Preview failed:** " + g.cell(fatal), ""]
+    if offline:
+        lines += ["**Live comparison unavailable:** this preview ran offline.", ""]
+    if data.get("unmapped"):
+        lines += ["**Preview failed: deployment files could not be mapped to an Application.**",
+                  *[f"- `{g.cell(path)}`" for path in data["unmapped"]], ""]
+    lines += ["| Application | Added | Removed | Modified | Result |", "|---|---:|---:|---:|---|"]
+    for row in rows:
+        counts = row.get("resourceCounts") if not row.get("error") and not offline else None
+        values = [str(counts[key]) if counts is not None else "—" for key in ("added", "deleted", "modified")]
+        lines.append(f"| `{g.cell(row['name'])}` | {' | '.join(values)} | {g.cell(row['result'])} |")
+    if not rows:
+        state = "Not evaluated" if fatal or data.get("unmapped") or data.get("applications") or offline else "No resource changes after sync"
+        lines.append(f"| — | — | — | — | {state} |")
+    body = "\n".join(lines) + "\n"
+    footer = "\n[Full diff]({{GITOPS_PREVIEW_ARTIFACT_URL}})\n"
+    omitted = False
+    for row in rows:
+        contents = []
+        if row.get("error"):
+            contents.append("**Preview failed:** " + g.cell(row["error"]))
+        contents.extend(g.cell(notice) for notice in row.get("notices", []))
+        if row.get("liveDiff") and not offline:
+            contents.append(g.block(row["liveDiff"], 12000))
+        elif not row.get("error"):
+            contents.append(g.cell(row["result"]))
+        detail = f"\n<details><summary>{g.cell(row['name'])}</summary>\n\n" + "\n\n".join(contents) + "\n\n</details>\n"
+        if len(body) + len(detail) + len(footer) < 58000:
+            body += detail
+        else:
+            omitted = True
+    if omitted:
+        body += "\nSome resource details are omitted from this comment. Open **Full diff** below.\n"
+    if len(body) + len(footer) > 60000:
+        body = "<!-- friday-pa:argocd-diff -->\n## GitOps PR Preview\nThe preview exceeds the comment limit. Open **Full diff** below.\n"
+    return body + footer
+
+
 def main():
     parser = argparse.ArgumentParser()
     for key in ("base", "head", "repo"):
@@ -154,29 +203,7 @@ def main():
     except (g.GitOpsError, ValueError, OSError, yaml.YAMLError) as exc:
         fatal = str(exc)
     data["fatal"] = fatal
-    body = g.summary(data, rows, "GitOps PR Preview", "<!-- friday-pa:argocd-diff -->")
-    body += f"\n**PR head:** `{args.head}`. The proposed revision includes the current base branch.\n"
-    if fatal:
-        body += "\n**Preview failed:** " + g.cell(fatal) + "\n"
-    body += "\nLive comparisons include Kubernetes defaults and existing drift; they are separate from the PR diff. "
-    body += "Ownership checks cover Argo CD tracked resources, not unmanaged cluster objects.\n"
-    budget = max(0, 58000 - len(body))
-    for row in rows:
-        detail = f"\n<details><summary>{g.cell(row['name'])}</summary>\n\n"
-        detail += "\n".join(g.cell(notice) for notice in row["notices"]) + "\n"
-        if row["error"]:
-            detail += "\n**Error:** " + g.cell(row["error"]) + "\n"
-        detail += "\n### Application configuration\n" + g.block(row.get("specDiff", ""), 2500)
-        detail += "\n### What this PR changes (base → proposed)\n" + g.block(row.get("prDiff", ""), 6000)
-        detail += "\n### Current cluster → proposed (includes drift/defaults)\n" + g.block(row.get("liveDiff", ""), 2500)
-        detail += "\n</details>\n"
-        if len(detail) <= budget:
-            body += detail
-            budget -= len(detail)
-    body += "\n[Complete comparisons and source identities]({{GITOPS_PREVIEW_ARTIFACT_URL}})\n"
-    if len(body) > 60000:
-        body = "<!-- friday-pa:argocd-diff -->\n## GitOps PR Preview\nSummary exceeds the comment limit. See the workflow artifact.\n"
-        fatal = fatal or "Summary exceeds the comment limit"
+    body = render_comment(data, rows, offline=args.offline)
     Path(args.output).write_text(body, encoding="utf-8")
     # Plan definitions can contain inline secrets. Only source identities and sanitized results are published.
     g.write_json(output / "summary.json", {"base": data["base"], "head": data["head"], "fatal": fatal,

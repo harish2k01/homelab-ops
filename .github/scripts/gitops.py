@@ -656,7 +656,9 @@ def manifest_diff(before, after, before_label, after_label):
             group, kind, namespace, name = key
             identity = f"{group + '/' if group else ''}{kind} {namespace + '/' if namespace else ''}{name}"
             if key not in old:
-                sections.append(f"+ ADDED {identity}")
+                annotations = new[key].get("metadata", {}).get("annotations") or {}
+                hook = " (sync hook)" if annotations.get("argocd.argoproj.io/hook") or annotations.get("helm.sh/hook") else ""
+                sections.append(f"+ ADDED {identity}{hook}")
             elif key not in new:
                 sections.append(f"- DELETED {identity}")
             elif old[key] != new[key]:
@@ -681,6 +683,52 @@ def change_counts(before, after):
     secret_new = {resource_key(item): (item.get("data"), item.get("stringData")) for item in after if item.get("kind") == "Secret"}
     return {"added": len(new.keys() - old.keys()), "deleted": len(old.keys() - new.keys()),
             "modified": sum(old[key] != new[key] or secret_old.get(key) != secret_new.get(key) for key in old.keys() & new.keys())}
+
+
+def predict_sync(live_app, proposed_app, live, desired):
+    """Predict managed resource changes, preserving resources sync will not prune.
+
+    Existing resources use Argo's dry-run normalizer rather than treating API
+    defaults as deleted fields. New resources and lifecycle decisions are local.
+    """
+    old = {resource_key(item): copy.deepcopy(item) for item in live}
+    new = {resource_key(item): copy.deepcopy(item) for item in desired}
+    notices = []
+    deleting = proposed_app is None
+    prune = deleting or bool((proposed_app.get("spec", {}).get("syncPolicy", {}).get("automated") or {}).get("prune"))
+    for key in old.keys() - new.keys():
+        annotations = old[key].get("metadata", {}).get("annotations") or {}
+        options = {part.partition("=")[0].strip(): part.partition("=")[2].strip().lower()
+                   for part in annotations.get("argocd.argoproj.io/sync-options", "").split(",")}
+        setting = options.get("Delete" if deleting else "Prune", "true")
+        reason = "pruning is disabled" if not prune else "resource retention is configured" if setting == "false" else "removal needs confirmation" if setting == "confirm" else ""
+        if reason:
+            new[key] = copy.deepcopy(old[key])
+            _, kind, namespace, name = key
+            notices.append(f"Retained {kind} {namespace + '/' if namespace else ''}{name}: {reason}.")
+    matched = []
+    for key in old.keys() & new.keys():
+        # Hooks execute as sync tasks, not ordinary persistent workload updates.
+        annotations = new[key].get("metadata", {}).get("annotations") or {}
+        if annotations.get("argocd.argoproj.io/hook") or annotations.get("helm.sh/hook"):
+            _, kind, namespace, name = key
+            notices.append(f"Sync hook {kind} {namespace + '/' if namespace else ''}{name} runs during sync.")
+            old.pop(key)
+            new.pop(key)
+        elif any(change_counts([old[key]], [new[key]]).values()):
+            matched.append(key)
+    if matched:
+        if live_app is None or proposed_app is None:
+            raise GitOpsError("Existing resources need a live Application for native comparison")
+        import gitops_native_diff as native
+        try:
+            normalized, predicted = native.predict(live_app, proposed_app,
+                                                    [old[key] for key in matched], [new[key] for key in matched])
+        except native.NativeDiffError as exc:
+            raise GitOpsError(str(exc)) from exc
+        old.update({resource_key(item): item for item in normalized})
+        new.update({resource_key(item): item for item in predicted})
+    return list(old.values()), list(new.values()), notices
 
 
 def cell(value):

@@ -31,6 +31,7 @@ test('invalidates old preview and deployment instructions; removes old app outpu
   assert.equal(writes.length, 3);
   assert.equal(writes[0].comment_id, 2);
   assert.match(writes[0].body, /Previous output is stale/);
+  assert.doesNotMatch(writes[0].body, /Rendering revision|`head`/);
   assert.deepEqual(writes[1], {type: 'delete', owner: 'owner', repo: 'ops', comment_id: 3});
   assert.match(writes[2].body, /No pre-merge deployment approval is pending/);
   assert.ok(writes.every(write => write.comment_id !== 1));
