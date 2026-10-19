@@ -1,0 +1,194 @@
+name: GitOps Reconcile
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      initial_base:
+        description: Full baseline commit SHA for recovery before any successful reconciliation
+        type: string
+        default: ''
+      reconcile_all:
+        description: Reconcile EVERY declared Application, including staged or currently absent Applications
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+# Pending runs can coalesce. Every run uses the last successful reconciliation.
+concurrency:
+  group: gitops-reconcile-main
+  cancel-in-progress: false
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      head: ${{ steps.revision.outputs.head }}
+      base: ${{ steps.baseline.outputs.base }}
+      all_apps: ${{ steps.revision.outputs.all_apps }}
+    steps:
+      - name: Resolve latest main and last successful reconciliation
+        id: revision
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.ref !== 'refs/heads/main') throw new Error('Reconciliation runs only from main');
+            const {owner, repo} = context.repo;
+            const {data: ref} = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner, repo, workflow_id: 'gitops-reconcile.yaml', branch: 'main', status: 'success', per_page: 100,
+            });
+            // API ordering can differ for reruns; choose the newest successful
+            // event, never the currently executing run's previous attempt.
+            const previous = runs.filter(run => run.id !== context.runId)
+              .sort((a, b) => b.run_number - a.run_number)[0];
+            core.setOutput('head', ref.object.sha);
+            const before = context.payload.before;
+            const validBefore = before && !/^0+$/.test(before);
+            const allApps = context.payload.inputs?.reconcile_all === 'true';
+            const initialBase = context.payload.inputs?.initial_base || '';
+            let recoveryFound = false;
+            if (initialBase && !/^[a-f0-9]{40}$/i.test(initialBase)) throw new Error('initial_base must be a full commit SHA');
+            if (!previous && !initialBase && !allApps) {
+              const history = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: 'gitops-reconcile.yaml', branch: 'main', per_page: 100,
+              });
+              if (history.some(run => run.id !== context.runId && run.status === 'completed')) {
+                const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+                  owner, repo, name: 'gitops-baseline', per_page: 100,
+                });
+                const recovery = artifacts.filter(artifact => !artifact.expired &&
+                  artifact.workflow_run?.head_branch === 'main' && artifact.workflow_run.id !== context.runId &&
+                  history.some(run => run.id === artifact.workflow_run.id))
+                  .sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+                if (!recovery) {
+                  throw new Error('No successful cursor exists and an earlier reconciliation did not succeed; its baseline artifact is unavailable. Dispatch with initial_base set to the baseline before the first pending change, or explicitly select reconcile_all.');
+                }
+                core.setOutput('recovery_run', recovery.workflow_run.id);
+                core.setOutput('recovery_artifact', recovery.id);
+                recoveryFound = true;
+              }
+            }
+            if (!previous && !validBefore && !initialBase && !allApps && !recoveryFound) {
+              throw new Error('No successful reconciliation cursor exists. Run on a push or explicitly select reconcile_all to include every declared Application, including staged Applications.');
+            }
+            core.setOutput('base', previous?.head_sha || initialBase || (validBefore ? before : ref.object.sha));
+            core.setOutput('all_apps', allApps ? 'true' : 'false');
+      - name: Recover initial baseline after an unsuccessful reconciliation
+        if: steps.revision.outputs.recovery_run != ''
+        uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ steps.revision.outputs.recovery_artifact }}
+          run-id: ${{ steps.revision.outputs.recovery_run }}
+          github-token: ${{ github.token }}
+          path: gitops-cursor-recovery
+          merge-multiple: true
+      - name: Persist reconciliation baseline
+        id: baseline
+        uses: actions/github-script@v7
+        env:
+          BASE_SHA: ${{ steps.revision.outputs.base }}
+          HEAD_SHA: ${{ steps.revision.outputs.head }}
+          RECOVERY_RUN: ${{ steps.revision.outputs.recovery_run }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const base = process.env.RECOVERY_RUN ?
+              JSON.parse(fs.readFileSync('gitops-cursor-recovery/baseline.json', 'utf8')).base : process.env.BASE_SHA;
+            if (!/^[a-f0-9]{40}$/i.test(base)) throw new Error('Reconciliation baseline must be a full commit SHA');
+            fs.mkdirSync('gitops-baseline', {recursive: true});
+            fs.writeFileSync('gitops-baseline/baseline.json', JSON.stringify({base, head: process.env.HEAD_SHA}));
+            core.setOutput('base', base);
+      - name: Save baseline before any deployment setup can fail
+        uses: actions/upload-artifact@v6
+        with:
+          name: gitops-baseline
+          path: gitops-baseline/baseline.json
+          overwrite: true
+          retention-days: 90
+  deploy:
+    needs: resolve
+    runs-on: homelab-ops-runner
+    # The deployment token is an environment secret. Required reviewers must be
+    # removed during migration; retaining the environment preserves secret scope.
+    environment: olympus
+    timeout-minutes: 115
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check -r .github/scripts/requirements-gitops.txt
+      - name: Install Argo CD CLI
+        env:
+          ARGOCD_VERSION: v3.4.6
+        run: bash .github/scripts/install-argocd.sh
+      - name: Reconcile Applications
+        env:
+          GITHUB_BASE_SHA: ${{ needs.resolve.outputs.base }}
+          GITHUB_HEAD_SHA: ${{ needs.resolve.outputs.head }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RECONCILE_ALL: ${{ needs.resolve.outputs.all_apps }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_DEPLOY_AUTH_TOKEN }}
+          ARGOCD_GRPC_WEB: ${{ vars.ARGOCD_GRPC_WEB }}
+          ARGOCD_INSECURE: ${{ vars.ARGOCD_INSECURE }}
+          ARGOCD_PLAINTEXT: ${{ vars.ARGOCD_PLAINTEXT }}
+        run: |
+          args=()
+          if [ "$RECONCILE_ALL" = true ]; then args+=(--all); fi
+          python -u .github/scripts/gitops-pr-apply.py "${args[@]}"
+      - name: Upload reconciliation results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: gitops-reconciliation
+          path: gitops-pr-apply-output
+          overwrite: true
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Verify cursor revision
+        env:
+          EVENT_SHA: ${{ github.sha }}
+          CHECKED_SHA: ${{ needs.resolve.outputs.head }}
+        run: |
+          # Rechecking newer main must not mark an older event SHA as the cursor.
+          test "$EVENT_SHA" = "$CHECKED_SHA"
+  report:
+    needs: [resolve, deploy]
+    if: always() && needs.resolve.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.head }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: gitops-reconciliation
+          path: gitops-pr-apply-output
+      - name: Create friday-pa token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRIDAY_PA_APP_ID }}
+          private-key: ${{ secrets.FRIDAY_PA_PRIVATE_KEY }}
+      - name: Publish deployment results
+        uses: actions/github-script@v7
+        env:
+          GITOPS_COMMENT_MODE: deploy
+          GITOPS_HEAD_SHA: ${{ needs.resolve.outputs.head }}
+          GITOPS_BASE_SHA: ${{ needs.resolve.outputs.base }}
+          GITOPS_DEPLOY_RESULT: ${{ needs.deploy.result }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            await require('./.github/scripts/gitops-comments.cjs')({github, context, core});

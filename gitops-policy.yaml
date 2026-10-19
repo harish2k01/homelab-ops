@@ -1,0 +1,6 @@
+# Deleting or renaming an Application requires an explicit decision by name.
+# retain removes the Application without deleting its workloads; delete cascades.
+deletions: {}
+# Dependencies must be synced and healthy before dependent Applications run.
+# Lower argocd.argoproj.io/sync-wave values also run before higher values.
+dependencies: {}

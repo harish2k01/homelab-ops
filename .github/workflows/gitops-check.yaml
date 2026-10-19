@@ -1,0 +1,50 @@
+name: Validate GitOps workflows
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/gitops*'
+      - '.github/scripts/test_gitops*'
+      - '.github/scripts/requirements-gitops.txt'
+      - '.github/scripts/install-argocd.sh'
+      - '.github/scripts/install-actionlint.sh'
+      - '.github/scripts/install-dyff.sh'
+      - '.github/workflows/gitops*'
+      - '.github/actionlint.yaml'
+      - 'gitops-policy.yaml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/gitops*'
+      - '.github/scripts/test_gitops*'
+      - '.github/scripts/requirements-gitops.txt'
+      - '.github/scripts/install-argocd.sh'
+      - '.github/scripts/install-actionlint.sh'
+      - '.github/scripts/install-dyff.sh'
+      - '.github/workflows/gitops*'
+      - '.github/actionlint.yaml'
+      - 'gitops-policy.yaml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'homelab-ops-runner' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check -r .github/scripts/requirements-gitops.txt
+      - name: Install dyff
+        run: bash .github/scripts/install-dyff.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m unittest discover -s .github/scripts -p 'test_gitops*.py' -v
+      - run: node --test .github/scripts/gitops-comments.test.cjs
+      - name: Install actionlint
+        run: bash .github/scripts/install-actionlint.sh
+      - name: Lint workflows
+        run: actionlint
