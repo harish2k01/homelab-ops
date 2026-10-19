@@ -34,14 +34,14 @@ module.exports = async ({github, context, core}) => {
     const existing = await comments(number);
     if (mode === 'pending') {
       if (!await upsert(number, existing, previewMarker,
-        `${previewMarker}\n## GitOps PR Preview\n**Status:** Rendering revision \`${head}\`. Previous output is stale.\n[View workflow](${runUrl})\n`)) return;
+        `${previewMarker}\n## GitOps PR Preview\nComparing changes with the live cluster. Previous output is stale.\n[View workflow](${runUrl})\n`)) return;
       for (const comment of existing.filter(owned)) {
         if (comment.body?.includes('<!-- friday-pa:argocd-new-app:')) {
           await github.rest.issues.deleteComment({owner, repo, comment_id: comment.id});
         }
         if (comment.body?.includes(deployMarker)) {
           await github.rest.issues.updateComment({owner, repo, comment_id: comment.id,
-            body: `${deployMarker}\n## Argo CD Reconciliation\n**Status:** Historical result; superseded by PR revision \`${head}\`.\nMerge authorizes deployment. No pre-merge deployment approval is pending.\n`});
+            body: `${deployMarker}\n## Argo CD Reconciliation\n**Status:** Historical result; the pull request has changed since this report.\nNo pre-merge deployment approval is pending.\n`});
         }
       }
       return;
