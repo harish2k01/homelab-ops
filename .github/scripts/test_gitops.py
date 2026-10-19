@@ -248,11 +248,27 @@ class Rendering(KnownScopes):
         self.assertIn("version", text)
         self.assertNotIn("apiVersion:", text)
 
-    def test_additions_and_deletions_are_compact_identities(self):
-        text = g.manifest_diff([resource("removed")], [resource("added")], "base", "proposed")
+    def test_additions_and_deletions_show_resource_fields(self):
+        text = g.manifest_diff([resource("removed", data={"setting": "old"})],
+                               [resource("added", data={"setting": "new"})], "base", "proposed")
         self.assertIn("+ ADDED ConfigMap added", text)
         self.assertIn("- DELETED ConfigMap removed", text)
-        self.assertNotIn("data:", text)
+        self.assertIn("+ data:\n+   setting: new", text)
+        self.assertIn("- data:\n-   setting: old", text)
+        self.assertIn("+ apiVersion: v1", text)
+
+    def test_added_and_deleted_resources_redact_secrets_and_runtime_metadata(self):
+        secret = resource(kind="Secret", data={"password": "private-value"})
+        secret["stringData"] = {"token": "private-token"}
+        secret["metadata"].update(uid="runtime-uid", resourceVersion="123", managedFields=[{}])
+        secret["status"] = {"detail": "runtime-status"}
+        for before, after, prefix in (([], [secret], "+"), ([secret], [], "-")):
+            with self.subTest(prefix=prefix):
+                text = g.manifest_diff(before, after, "live", "sync")
+                self.assertIn(f"{prefix} data:\n{prefix}   password: <redacted>", text)
+                self.assertIn(f"{prefix} stringData:\n{prefix}   token: <redacted>", text)
+                for hidden in ("private-value", "private-token", "runtime-uid", "resourceVersion", "managedFields", "runtime-status"):
+                    self.assertNotIn(hidden, text)
 
     def test_null_secret_data_and_annotations_are_supported(self):
         document = resource(kind="Secret", data=None)
