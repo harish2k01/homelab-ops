@@ -1,0 +1,40 @@
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+env:
+  TZ: Asia/Kolkata
+  ORIGIN: https://profilarr.k8s.harish2k01.xyz
+  AUTH: "on"
+
+persistence:
+  config:
+    enabled: true
+    size: 2Gi
+    storageClassName: longhorn
+
+# Enables release parsing and profile simulations in the UI.
+parser:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - profilarr.k8s.harish2k01.xyz
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
