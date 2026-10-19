@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+gitops-rendered-output/
+gitops-pr-apply-output/
+gitops-preview.md

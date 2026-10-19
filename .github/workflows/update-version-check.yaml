@@ -3,17 +3,20 @@ on:
   pull_request:
     paths:
       - .github/scripts/update-version*.mjs
+      - .github/scripts/install-yq.sh
       - .github/workflows/update-version*.yaml
   push:
     branches: [main]
     paths:
       - .github/scripts/update-version*.mjs
+      - .github/scripts/install-yq.sh
       - .github/workflows/update-version*.yaml
 permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'homelab-ops-runner' || 'ubuntu-latest' }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,8 +25,6 @@ jobs:
         with:
           node-version: "24"
       - name: Install yq
-        run: |
-          curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64 -o "$RUNNER_TEMP/yq"
-          chmod +x "$RUNNER_TEMP/yq"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+        timeout-minutes: 12
+        run: bash .github/scripts/install-yq.sh
       - run: node --test .github/scripts/update-version.test.mjs

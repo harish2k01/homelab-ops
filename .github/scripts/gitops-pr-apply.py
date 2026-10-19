@@ -1,275 +1,165 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
+"""Reconcile merged GitOps changes; persist an outcome for every Application."""
 import argparse
-import importlib.util
 import json
-import math
 import os
-import sys
-import time
 from pathlib import Path
-from types import ModuleType
-from typing import Any
+import sys
+import tempfile
+import time
+import yaml
+import gitops as g
 
 
-OPERATION_IN_PROGRESS = "another operation is already in progress"
-TRANSIENT_ARGO_ERRORS = (
-    "code = deadlineexceeded",
-    "stream terminated by rst_stream",
-    "transport is closing",
-    "connection reset by peer",
-    "unexpected eof",
-)
-CREATE_ATTEMPTS = 3
-SYNC_ATTEMPTS = 3
+def current_main(repo, expected):
+    branch = os.getenv("GITOPS_DEFAULT_BRANCH", "main")
+    current = g.git(repo, "ls-remote", "origin", f"refs/heads/{branch}").split()[0]
+    if current != expected:
+        raise g.GitOpsError(f"Superseded: {branch} advanced to {current}; the next reconciliation includes pending changes")
 
 
-def load_preview_module() -> ModuleType:
-    module_path = Path(__file__).with_name("gitops-pr-preview.py")
-    spec = importlib.util.spec_from_file_location("gitops_pr_preview", module_path)
-    if not spec or not spec.loader:
-        raise RuntimeError(f"Unable to load {module_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Deploy reviewer-approved merged GitOps changes through Argo CD."
-    )
-    parser.add_argument("--base", default=os.getenv("GITHUB_BASE_SHA"), help="PR base commit SHA.")
-    parser.add_argument(
-        "--head",
-        default=os.getenv("GITHUB_HEAD_SHA"),
-        help="Approved PR merge commit SHA.",
-    )
-    parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY"), help="GitHub repository, owner/name.")
-    parser.add_argument("--pr-number", default=os.getenv("GITHUB_PR_NUMBER"), help="Pull request number.")
-    parser.add_argument("--timeout", type=int, default=900, help="Seconds to wait for each Application.")
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Generate merged Application files without deploying.",
-    )
-    parser.add_argument("--output-dir", default="gitops-pr-apply-output", help="Dry-run output directory.")
-    parser.add_argument(
-        "--metadata-output",
-        default="gitops-pr-apply-metadata.json",
-        help="JSON summary used by the PR deployment comment.",
-    )
-    return parser.parse_args()
-
-
-def application_name(document: dict[str, Any]) -> str:
-    metadata = document.get("metadata")
-    if not isinstance(metadata, dict) or not metadata.get("name"):
-        raise ValueError("Application manifest has no metadata.name")
-    return str(metadata["name"])
-
-
-def is_transient_argo_error(output: str) -> bool:
-    normalized = output.lower()
-    return any(marker in normalized for marker in TRANSIENT_ARGO_ERRORS)
-
-
-def deploy_application(
-    preview: ModuleType,
-    *,
-    repo: Path,
-    app_name: str,
-    manifest_path: Path,
-    timeout: int,
-) -> None:
-    base_args = preview.argo_base_args()
-    create_command = [
-        "argocd",
-        *base_args,
-        "app",
-        "create",
-        app_name,
-        "--file",
-        str(manifest_path),
-        "--upsert",
-    ]
-    for attempt in range(1, CREATE_ATTEMPTS + 1):
-        print(f"Running: {' '.join(create_command)}", flush=True)
-        completed = preview.run(create_command, cwd=repo, allow_failure=True)
-        if completed.returncode == 0:
-            break
-
-        output = completed.stdout or ""
-        if not is_transient_argo_error(output) or attempt == CREATE_ATTEMPTS:
-            print(output, file=sys.stderr, flush=True)
-            raise SystemExit(completed.returncode)
-
-        delay = 10 * attempt
-        print(
-            f"{app_name}: transient Argo CD manifest-generation failure; "
-            f"retrying app create in {delay}s ({attempt + 1}/{CREATE_ATTEMPTS}).",
-            flush=True,
-        )
-        time.sleep(delay)
-
-    deadline = time.monotonic() + timeout
-    sync_command = ["argocd", *base_args, "app", "sync", app_name]
-    for attempt in range(1, SYNC_ATTEMPTS + 1):
-        print(f"Running: {' '.join(sync_command)}", flush=True)
-        completed = preview.run(sync_command, cwd=repo, allow_failure=True)
-        if completed.returncode == 0:
-            break
-
-        output = completed.stdout or ""
-        if OPERATION_IN_PROGRESS not in output.lower() or attempt == SYNC_ATTEMPTS:
-            print(output, file=sys.stderr, flush=True)
-            raise SystemExit(completed.returncode)
-
-        remaining = max(0, math.ceil(deadline - time.monotonic()))
-        if remaining <= 0:
-            print(output, file=sys.stderr, flush=True)
-            raise SystemExit(completed.returncode)
-
-        print(
-            f"{app_name}: another Argo CD operation is running; "
-            f"waiting before sync retry {attempt + 1}/{SYNC_ATTEMPTS}.",
-            flush=True,
-        )
-        wait_command = [
-            "argocd",
-            *base_args,
-            "app",
-            "wait",
-            app_name,
-            "--operation",
-            "--timeout",
-            str(remaining),
-        ]
-        print(f"Running: {' '.join(wait_command)}", flush=True)
-        wait_result = preview.run(wait_command, cwd=repo, allow_failure=True)
-        if wait_result.returncode != 0:
-            print(
-                f"{app_name}: the previous operation did not complete cleanly; "
-                "retrying the approved sync while time remains.",
-                file=sys.stderr,
-                flush=True,
-            )
-
-    remaining = max(0, math.ceil(deadline - time.monotonic()))
-    if remaining <= 0:
-        print(f"{app_name}: timed out before the approved sync could be verified.", file=sys.stderr)
-        raise SystemExit(1)
-
-    wait_command = [
-        "argocd",
-        *base_args,
-        "app",
-        "wait",
-        app_name,
-        "--sync",
-        "--health",
-        "--operation",
-        "--timeout",
-        str(remaining),
-    ]
-    print(f"Running: {' '.join(wait_command)}", flush=True)
-    preview.run(wait_command, cwd=repo)
-
-
-def main() -> int:
-    args = parse_args()
-    if not args.base or not args.head or not args.repo:
-        print("--base, --head, and --repo are required.", file=sys.stderr)
-        return 2
-
-    preview = load_preview_module()
-    repo = Path.cwd()
-    current_repo_urls = {preview.normalize_repo_url(f"https://github.com/{args.repo}")}
-    changes = preview.parse_name_status(
-        preview.git(["diff", "--name-status", "--find-renames", args.base, args.head], cwd=repo)
-    )
-    head_apps = preview.load_apps_from_worktree(repo, current_repo_urls)
-    base_apps = preview.load_apps_from_git(repo, args.base, current_repo_urls)
-    all_apps = preview.merge_apps(head_apps, base_apps)
-    reasons = preview.map_changes_to_apps(changes, all_apps)
-    head_apps_by_name = {app.name: app for app in head_apps}
-
-    selected_apps = [
-        head_apps_by_name[name]
-        for name in sorted(reasons)
-        if name in head_apps_by_name
-    ][: preview.MAX_APPS]
-    removed_apps = sorted(set(reasons) - set(head_apps_by_name))
-
-    if removed_apps:
-        print("Application deletions require manual cleanup: " + ", ".join(removed_apps))
-
-    if selected_apps and not args.dry_run:
-        available, unavailable_reason = preview.argo_available()
-        if not available:
-            print(unavailable_reason, file=sys.stderr)
-            return 2
-
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    for old_manifest in output_dir.glob("*.yaml"):
-        old_manifest.unlink()
-
-    generated_apps: list[tuple[str, Path]] = []
-    metadata_apps: list[dict[str, Any]] = []
-    for app in selected_apps:
-        source_path = repo / app.manifest_path
-        source_bytes = source_path.read_bytes()
-        source_text = source_bytes.decode("utf-8")
-        document = preview.load_yaml_document(source_text)
-        if not document:
-            raise ValueError(f"Unable to parse Application manifest: {app.manifest_path}")
-
-        app_name = application_name(document)
-        output_path = output_dir / f"{app_name}.yaml"
-        output_path.write_bytes(source_bytes)
-        generated_apps.append((app_name, output_path))
-        metadata_apps.append(
-            {
-                "name": app_name,
-                "namespace": app.namespace or "-",
-                "reasons": sorted(reasons[app_name]),
-            }
-        )
-
-        reason_text = ", ".join(sorted(reasons[app_name]))
-        print(f"{app_name}: {reason_text}; using merged Application source revisions")
-
-    metadata = {
-        "prNumber": args.pr_number or "",
-        "mergeSha": args.head,
-        "applications": metadata_apps,
-        "deferredDeletions": removed_apps,
+def diagnostics(name):
+    app = json.loads(g.argo("app", "get", name, "--refresh", "-o", "json", attempts=3))
+    status = app.get("status", {})
+    return {
+        "sync": status.get("sync", {}).get("status", "Unknown"),
+        "health": status.get("health", {}).get("status", "Unknown"),
+        "revisions": status.get("sync", {}).get("revisions") or [status.get("sync", {}).get("revision")],
+        "operation": status.get("operationState", {}).get("phase", "None"),
+        "message": status.get("operationState", {}).get("message", "")[:1000],
+        "resources": [{key: item.get(key) for key in ("group", "kind", "namespace", "name", "status", "health")}
+                      for item in status.get("resources", []) if item.get("status") != "Synced" or
+                      item.get("health", {}).get("status") not in {None, "Healthy"}],
+        "conditions": [{"type": item.get("type"), "message": item.get("message", "")[:1000]}
+                       for item in status.get("conditions", [])],
     }
-    Path(args.metadata_output).write_text(
-        json.dumps(metadata, indent=2) + "\n",
-        encoding="utf-8",
-    )
 
-    if not generated_apps:
-        print("No new or changed Applications need to be deployed.")
-        return 0
 
-    if not args.dry_run:
-        for app_name, manifest_path in generated_apps:
-            deploy_application(
-                preview,
-                repo=repo,
-                app_name=app_name,
-                manifest_path=manifest_path,
-                timeout=args.timeout,
-            )
+def request_sync(repo, expected, name, remaining):
+    for attempt in range(3):
+        state = diagnostics(name)
+        if state["sync"] == "Synced" and state["health"] == "Healthy":
+            return
+        current_main(repo, expected)
+        try:
+            g.argo("app", "sync", name, "--async")
+            return
+        except g.GitOpsError as exc:
+            if "another operation is already in progress" not in str(exc).lower() or attempt == 2:
+                raise
+            timeout = remaining()
+            g.argo("app", "wait", name, "--operation", "--timeout", str(timeout), timeout=timeout + 30)
 
-    action = "Prepared" if args.dry_run else "Deployed"
-    print(f"{action} {len(selected_apps)} Application(s) for PR #{args.pr_number or 'unknown'}.")
-    return 0
+
+def reconcile(repo, data, output, *, dry_run=False, timeout=900):
+    rows = [{"name": entry["name"], "action": entry["action"], "result": "not attempted", "error": ""}
+            for entry in data["applications"]]
+    failed, live = set(), {}
+    deadline = time.monotonic() + int(os.getenv("GITOPS_DEPLOY_BUDGET", "6000"))
+
+    def save():
+        g.write_json(output / "results.json", {"base": data["base"], "head": data["head"], "applications": rows})
+        body = g.summary(data, rows, "Argo CD Reconciliation", "<!-- friday-pa:argocd-apply -->")
+        for row in rows:
+            if row.get("error") or row.get("diagnostics"):
+                body += f"\n### {g.cell(row['name'])}\n"
+                body += g.cell(row.get("error", "")) + "\n"
+                body += "```json\n" + json.dumps(row.get("diagnostics", {}), indent=2).replace("```", "` ` `")[:5000] + "\n```\n"
+        (output / "report.md").write_text(body, encoding="utf-8")
+
+    save()
+    if data.get("unmapped"):
+        raise g.GitOpsError("Deployment paths are not mapped to Applications; no changes applied")
+    if not dry_run and rows:
+        live = {app["metadata"]["name"]: app for app in json.loads(g.argo("app", "list", "-o", "json", attempts=3))}
+    with tempfile.TemporaryDirectory(prefix="gitops-deploy-") as directory:
+        for entry, row in zip(data["applications"], rows):
+            try:
+                if time.monotonic() >= deadline:
+                    raise g.GitOpsError("Not attempted: reconciliation time budget exhausted")
+                blockers = [other["name"] for other in data["applications"] if other["name"] in failed and
+                            (other["name"] in entry["dependencies"] or other["wave"] < entry["wave"])]
+                if blockers:
+                    raise g.GitOpsError("Not attempted: failed dependencies/waves: " + ", ".join(blockers))
+                if any(notice.startswith("BLOCKED:") for notice in entry["notices"]):
+                    raise g.GitOpsError("Not attempted: deletion/rename requires explicit retain/delete policy")
+                if dry_run:
+                    row["result"] = "planned"
+                    continue
+                planned_names = {item["name"] for item in data["applications"]}
+                for name in set(entry["dependencies"]) - planned_names:
+                    status = live.get(name, {}).get("status", {})
+                    if status.get("sync", {}).get("status") != "Synced" or status.get("health", {}).get("status") != "Healthy":
+                        raise g.GitOpsError(f"Not attempted: dependency {name} is not synced and healthy")
+                current_main(repo, data["head"])
+                if entry["action"] == "delete":
+                    if entry["name"] not in live:
+                        row["result"] = "already absent"
+                        continue
+                    cascade = "true" if entry["deletion"] == "delete" else "false"
+                    g.argo("app", "delete", entry["name"], f"--cascade={cascade}", "--yes")
+                    g.argo("app", "wait", entry["name"], "--delete", "--timeout", str(timeout), timeout=timeout + 30)
+                    row["result"] = "deleted with resources" if cascade == "true" else "Application removed; resources retained"
+                    continue
+                path = Path(directory) / f"{entry['name']}.yaml"
+                path.write_text(yaml.safe_dump(entry["after"]["document"], sort_keys=False), encoding="utf-8")
+                # No retries for writes with ambiguous completion. A rerun starts with current state.
+                g.argo("app", "create", entry["name"], "--file", str(path), "--upsert")
+                row["result"] = "definition applied; waiting for convergence"
+                save()
+                request_sync(repo, data["head"], entry["name"], lambda: max(1, min(timeout, int(deadline - time.monotonic()))))
+                remaining = max(1, min(timeout, int(deadline - time.monotonic())))
+                g.argo("app", "wait", entry["name"], "--sync", "--health", "--operation", "--timeout", str(remaining), timeout=remaining + 30)
+                row["diagnostics"] = diagnostics(entry["name"])
+                if row["diagnostics"]["sync"] != "Synced" or row["diagnostics"]["health"] != "Healthy":
+                    raise g.GitOpsError("Application has not converged")
+                current_main(repo, data["head"])
+                row["result"] = "synced and healthy"
+            except (g.GitOpsError, ValueError, OSError, yaml.YAMLError) as exc:
+                failed.add(entry["name"])
+                row["error"] = str(exc)
+                row["result"] = "not attempted" if str(exc).startswith(("Not attempted:", "Superseded:")) else "FAILED"
+                if not dry_run and entry["action"] != "delete" and row["result"] == "FAILED":
+                    try:
+                        row["diagnostics"] = diagnostics(entry["name"])
+                        state = row["diagnostics"]
+                        if state["health"] == "Healthy" and state["sync"] == "OutOfSync":
+                            row["result"] = "FAILED: healthy but persistent drift"
+                        elif state["health"] in {"Degraded", "Missing"}:
+                            row["result"] = "FAILED: unhealthy resources"
+                    except (g.GitOpsError, ValueError, OSError):
+                        pass
+            finally:
+                save()
+    return bool(failed)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    for key in ("base", "head", "repo"):
+        variable = {"base": "GITHUB_BASE_SHA", "head": "GITHUB_HEAD_SHA", "repo": "GITHUB_REPOSITORY"}[key]
+        parser.add_argument(f"--{key}", default=os.getenv(variable), required=not os.getenv(variable))
+    parser.add_argument("--all", action="store_true", help="Bootstrap: reconcile all current Applications")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument("--output-dir", default="gitops-pr-apply-output")
+    args = parser.parse_args()
+    output = Path(args.output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    # A failed plan must never publish an earlier attempt's successful report.
+    for filename in ("report.md", "results.json"):
+        (output / filename).unlink(missing_ok=True)
+    try:
+        repository = args.repo if "://" in args.repo else f"https://github.com/{args.repo}"
+        data = g.plan(Path.cwd(), args.base, args.head, repository, all_apps=args.all)
+        return int(reconcile(Path.cwd(), data, output, dry_run=args.dry_run, timeout=args.timeout))
+    except (g.GitOpsError, ValueError, OSError, yaml.YAMLError) as exc:
+        message = "Reconciliation failed: " + g.cell(str(exc))
+        with (output / "report.md").open("a", encoding="utf-8") as report:
+            report.write("\n" + message + "\n")
+        print(message, file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
