@@ -658,9 +658,11 @@ def manifest_diff(before, after, before_label, after_label):
             if key not in old:
                 annotations = new[key].get("metadata", {}).get("annotations") or {}
                 hook = " (sync hook)" if annotations.get("argocd.argoproj.io/hook") or annotations.get("helm.sh/hook") else ""
-                sections.append(f"+ ADDED {identity}{hook}")
+                fields = "\n".join("+ " + line for line in yaml.safe_dump(new[key], sort_keys=True).rstrip().splitlines())
+                sections.append(f"+ ADDED {identity}{hook}\n{fields}")
             elif key not in new:
-                sections.append(f"- DELETED {identity}")
+                fields = "\n".join("- " + line for line in yaml.safe_dump(old[key], sort_keys=True).rstrip().splitlines())
+                sections.append(f"- DELETED {identity}\n{fields}")
             elif old[key] != new[key]:
                 left.write_text(yaml.safe_dump(old[key], sort_keys=True), encoding="utf-8")
                 right.write_text(yaml.safe_dump(new[key], sort_keys=True), encoding="utf-8")
