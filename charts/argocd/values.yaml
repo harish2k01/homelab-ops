@@ -2297,13 +2297,14 @@ server:
   podLabels: {}
 
   # -- Resource limits and requests for the Argo CD server
+  # Native sync previews load OpenAPI schemas and managed resources in this API process.
   resources:
     limits:
       cpu: 100m
-      memory: 128Mi
+      memory: 1Gi
     requests:
       cpu: 50m
-      memory: 64Mi
+      memory: 256Mi
 
   # Server container ports
   containerPorts:
