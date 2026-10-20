@@ -168,7 +168,7 @@ def predict(live_app, proposed_app, live_resources, target_resources, *, server=
         if live_app.get("spec", {}).get(field) != proposed_app.get("spec", {}).get(field):
             raise NativeDiffError(f"Native comparison requires unchanged Application {field}; review that configuration change separately")
     annotation = "argocd.argoproj.io/compare-options"
-    if live_app.get("metadata", {}).get("annotations", {}).get(annotation) != proposed_app.get("metadata", {}).get("annotations", {}).get(annotation):
+    if (live_app.get("metadata", {}).get("annotations") or {}).get(annotation) != (proposed_app.get("metadata", {}).get("annotations") or {}).get(annotation):
         raise NativeDiffError("Native comparison requires unchanged Application comparison options")
     old, new = {_key(item): item for item in live_resources}, {_key(item): item for item in target_resources}
     if old.keys() != new.keys() or len(old) != len(live_resources) or len(new) != len(target_resources):
@@ -179,9 +179,11 @@ def predict(live_app, proposed_app, live_resources, target_resources, *, server=
     batches, batch, size = [], [], len(prefix)
     for key in sorted(old):
         target = copy.deepcopy(new[key])
-        tracking = old[key].get("metadata", {}).get("annotations", {}).get("argocd.argoproj.io/tracking-id")
+        tracking = (old[key].get("metadata", {}).get("annotations") or {}).get("argocd.argoproj.io/tracking-id")
         if tracking:
-            target.setdefault("metadata", {}).setdefault("annotations", {})["argocd.argoproj.io/tracking-id"] = tracking
+            metadata = target.setdefault("metadata", {})
+            metadata["annotations"] = metadata.get("annotations") or {}
+            metadata["annotations"]["argocd.argoproj.io/tracking-id"] = tracking
         live_json = json.dumps(old[key], separators=(",", ":"))
         target_json = json.dumps(target, separators=(",", ":"))
         resource = b"".join(_field(index, value) for index, value in enumerate(key, 1)) + _field(6, live_json)

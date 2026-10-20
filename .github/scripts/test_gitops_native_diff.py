@@ -65,6 +65,26 @@ class NativeDiffTests(unittest.TestCase):
                     native.predict(self.app, proposed, [resource()], [resource()])
                 rpc.assert_not_called()
 
+    def test_null_annotations_preserve_tracking_without_mutating_inputs(self):
+        before, target = resource(), resource()
+        tracking = "example:/ConfigMap:test/config"
+        before["metadata"]["annotations"] = {"argocd.argoproj.io/tracking-id": tracking}
+        target["metadata"]["annotations"] = None
+        app = copy.deepcopy(self.app)
+        app["metadata"]["annotations"] = None
+        with patch.object(native, "_rpc", return_value=response(before, target)) as rpc:
+            native.predict(app, self.app, [before], [target])
+        sent = json.loads(next(value for number, value in native._fields(rpc.call_args.args[0]) if number == 5))
+        self.assertEqual(sent["metadata"]["annotations"]["argocd.argoproj.io/tracking-id"], tracking)
+        self.assertIsNone(target["metadata"]["annotations"])
+        self.assertIsNone(app["metadata"]["annotations"])
+
+    def test_null_live_resource_annotations_are_supported(self):
+        before, target = resource(), resource()
+        before["metadata"]["annotations"] = None
+        with patch.object(native, "_rpc", return_value=response(before, target)):
+            self.assertEqual(native.predict(self.app, self.app, [before], [target]), ([before], [target]))
+
     def test_unaligned_and_duplicate_inputs_rejected(self):
         for before, after in (([resource()], []), ([resource(), resource()], [resource()])):
             with self.assertRaises(native.NativeDiffError):
