@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-server-native-diff-rbac
+rules:
+  # ServerSideDiff performs Kubernetes SSA dry-runs as the Argo API server.
+  # These checks also apply to dry-runs; the controller already holds them.
+  # Kubernetes cannot restrict these permissions to dry-run requests alone.
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - clusterroles
+    verbs:
+      - escalate
+      - bind
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-server-native-diff-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server-native-diff-rbac
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: argocd

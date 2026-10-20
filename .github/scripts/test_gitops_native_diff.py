@@ -45,6 +45,14 @@ class NativeDiffTests(unittest.TestCase):
         with self.assertRaises(native.NativeDiffError):
             list(native._fields(b"\x0a\x04x"))
 
+    def test_kubernetes_rbac_denial_is_actionable_without_disclosing_server_message(self):
+        message = "ClusterRole/private-role is forbidden: private-user is attempting to grant RBAC permissions not currently held; private-content"
+        encoded = native.parse.quote(message)
+        trailer = f"grpc-status: 2\r\ngrpc-message: {encoded}\r\n".encode()
+        with self.assertRaisesRegex(native.NativeDiffError, "denied by Kubernetes RBAC; check argocd-server permissions") as caught:
+            native._unframe(b"\x80" + struct.pack(">I", len(trailer)) + trailer, {})
+        self.assertNotIn("private", str(caught.exception))
+
     def test_predicted_objects_not_raw_desired_are_returned(self):
         before = resource()
         before["metadata"]["labels"] = {"defaulted": "preserve"}

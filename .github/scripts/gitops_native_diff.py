@@ -96,6 +96,9 @@ def _unframe(data, headers):
     status = trailers.get("grpc-status", headers.get("grpc-status"))
     # Do not expose grpc-message: validation errors may quote manifest contents.
     if status != "0":
+        message = parse.unquote(trailers.get("grpc-message", headers.get("grpc-message", ""))).lower()
+        if "is forbidden" in message or "attempting to grant rbac permissions" in message:
+            raise NativeDiffError(f"Argo native diff denied by Kubernetes RBAC; check argocd-server permissions (gRPC status {status})")
         raise NativeDiffError(f"Argo native diff failed (gRPC status {status or 'missing'})")
     if len(messages) != 1:
         raise NativeDiffError("Expected one native diff response message")
