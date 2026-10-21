@@ -26,6 +26,10 @@ token:
 cloudflared:
   logLevel: info
   noAutoupdate: true
+  extraEnv:
+    # Preserve the old IPv4 edge behavior on this IPv4-only pod network.
+    # The target release changes the upstream default to automatic selection.
+    TUNNEL_EDGE_IP_VERSION: "4"
   metrics:
     enabled: true
     address: 0.0.0.0:2000
@@ -51,7 +55,7 @@ topologySpreadConstraints:
         pod: cloudflared
 
 # Upgrade/configuration notes for chart 0.2.0:
-# Edge IP family now defaults to auto. Optional cloudflared.extraEnv.TUNNEL_EDGE_IP_VERSION: "4" preserves IPv4-only behavior.
+# Edge IP family now defaults to auto; the explicit "4" above preserves existing IPv4 edge behavior.
 # Optional TUNNEL_NO_PRECHECKS: "true" skips diagnostics. TUNNEL_DISABLE_PATH_NORMALIZATION: "false" enables Access-rule path normalization; review rules before opting in.
 # Keep the existing token Secret and remotely managed ingress; do not add token values here.
 # Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/cloudflared/values.yaml
