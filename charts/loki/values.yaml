@@ -2106,7 +2106,7 @@ singleBinary:
     accessModes:
       - ReadWriteOnce
     # -- Size of persistent disk
-    size: 20Gi
+    size: 10Gi
     # @schema type:[string, null]
     # -- Storage class to be used.
     # If defined, storageClassName: <storageClass>.
