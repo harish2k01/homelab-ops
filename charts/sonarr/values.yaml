@@ -29,4 +29,3 @@ httpRoute:
 
 resources: {}
 envFrom: []
-

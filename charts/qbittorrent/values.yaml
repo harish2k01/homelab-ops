@@ -36,4 +36,3 @@ resources:
   limits:
     memory: 1Gi
 envFrom: []
-

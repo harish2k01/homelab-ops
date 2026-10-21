@@ -64,4 +64,3 @@ initContainer:
 deploymentStrategy:
   type: Recreate
 envFrom: []
-

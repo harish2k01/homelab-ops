@@ -44,4 +44,3 @@ startupProbe:
     port: http
   periodSeconds: 5
   failureThreshold: 60
-

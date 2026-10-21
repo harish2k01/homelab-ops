@@ -139,4 +139,3 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
