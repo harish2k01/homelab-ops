@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/alam00000/bentopdf-simple
   pullPolicy: IfNotPresent
-  tag: "2.8.4"
+  tag: "2.8.10"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -64,3 +64,10 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+envFrom: []
+
+# Upgrade/configuration notes for chart 0.2.0:
+# Optional env.ROBOTS_NOINDEX: "true" adds noindex metadata at startup and needs writable bundled HTML.
+# env.PORT must match service.targetPort; SITE_URL and branding settings require a custom image build.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/bentopdf/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/bentopdf/CHANGELOG.md

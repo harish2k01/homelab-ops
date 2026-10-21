@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: adguard/adguardhome
-  tag: "v0.107.76"
+  tag: "v0.107.79"
   pullPolicy: IfNotPresent
 
 service:
@@ -63,3 +63,10 @@ readinessProbe:
   failureThreshold: 3
 
 resources: {}
+envFrom: []
+
+# Upgrade/configuration notes for chart 0.1.3:
+# Large filter lists now have a 256 MB default download limit. Adjust filtering.max_http_size in the app-owned AdGuardHome.yaml only if needed.
+# Keep work/conf on the existing PVC; do not mount a read-only replacement over the writable configuration.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/adguard-home/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/adguard-home/CHANGELOG.md

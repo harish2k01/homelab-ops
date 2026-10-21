@@ -28,3 +28,10 @@ httpRoute:
     - radarr.k8s.harish2k01.xyz
 
 resources: {}
+envFrom: []
+
+# Upgrade/configuration notes for chart 0.2.0:
+# Optional env.RADARR__SERVER__ALLOWEDHOSTS and RADARR__SERVER__TRUSTEDNETWORKS accept deployment-specific host/network lists.
+# Use envFrom for external database credentials. Updated probes use Host: localhost; library settings remain app-owned.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/radarr/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/radarr/CHANGELOG.md

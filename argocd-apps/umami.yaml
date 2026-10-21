@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: umami
-      targetRevision: 0.1.0
+      targetRevision: 0.2.0
       helm:
         releaseName: umami
         valueFiles:
@@ -28,4 +28,12 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
   revisionHistoryLimit: 3
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: umami-db
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/metadata/labels/helm.sh~1chart
+        - /spec/volumeClaimTemplates/0/metadata/labels/app.kubernetes.io~1version

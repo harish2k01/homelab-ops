@@ -3,7 +3,7 @@ replicaCount: 1
 # Container image. Pin the tag for repeatable sync infrastructure rollouts.
 image:
   repository: syncthing/syncthing
-  tag: "2.1.0"
+  tag: "2.1.6"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -138,3 +138,17 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+startupProbe:
+  httpGet:
+    path: /rest/noauth/health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 60
+
+# Upgrade/configuration notes for chart 0.2.0:
+# startupProbe allows 10 minutes for SQLite migrations; increase its failureThreshold for a larger library.
+# Back up the persistent Syncthing home with the process stopped. Deprecated cacheIgnoredFiles/urPostInsecurely are app-config removals.
+# GUI, grouping and folder settings remain in persisted configuration, not forced env defaults.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/syncthing/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/syncthing/CHANGELOG.md

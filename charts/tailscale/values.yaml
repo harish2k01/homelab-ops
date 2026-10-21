@@ -5,7 +5,7 @@ replicaCount: 2
 image:
   repository: tailscale/tailscale
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "v1.96.5"
+  tag: "v1.104.1"
   pullPolicy: IfNotPresent
 
 # Store the auth key in a Sealed Secret or manually created Secret named below.
@@ -15,6 +15,7 @@ authKey:
   existingSecret: tailscale-auth-secret
   existingSecretKey: TS_AUTHKEY
   create: false
+  enabled: true
 
 tailscale:
   hostnameFromPodName: true
@@ -31,6 +32,7 @@ tailscale:
     # The pod's legacy iptables path is failing to create filter/nat tables.
     # Let Tailscale choose nftables when the kernel supports it.
     TS_DEBUG_FIREWALL_MODE: auto
+  bootTimeout: ""
 
 persistence:
   enabled: true
@@ -56,3 +58,13 @@ topologySpreadConstraints:
       matchLabels:
         app.kubernetes.io/name: tailscale
         app.kubernetes.io/instance: tailscale
+sysctl:
+  image:
+    tag: "1.37"
+
+# Upgrade/configuration notes for chart 0.1.4:
+# Optional tailscale.bootTimeout: "90s" extends initial control-plane connection time (upstream default 60s).
+# authKey.enabled stays true for the existing Secret; disable only for a separately configured OAuth/workload-identity deployment.
+# Keep per-pod state and tailnet identity. The sysctl init image stays on the current stable tag rather than the new unstable chart default.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/tailscale/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/tailscale/CHANGELOG.md

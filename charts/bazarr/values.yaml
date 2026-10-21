@@ -28,3 +28,18 @@ httpRoute:
     - bazarr.k8s.harish2k01.xyz
 
 resources: {}
+envFrom: []
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 90
+
+# Upgrade/configuration notes for chart 0.2.0:
+# startupProbe now allows 15 minutes for subtitle database migrations; back up /config before rollout.
+# Optional env.BAZARR_CONFIG_BASE_FILE_PATH selects a writable config directory, not a file.
+# New provider/quality/scoring options remain in the app UI; custom scoring and Podnapisi were removed upstream.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/bazarr/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/bazarr/CHANGELOG.md

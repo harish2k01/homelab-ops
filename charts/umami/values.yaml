@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/umami-software/umami
-  tag: "3.1.0"
+  tag: "3.4.0"
   pullPolicy: IfNotPresent
 
 podSecurityContext: {}
@@ -78,7 +78,22 @@ umami:
     limits:
       cpu: 500m
       memory: 768Mi
+  extraEnv: []
 
 nodeSelector: {}
 tolerations: []
 affinity: {}
+startupProbe:
+  httpGet:
+    path: /api/heartbeat
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 120
+
+# Upgrade/configuration notes for chart 0.2.0:
+# startupProbe protects up to 20 minutes of migrations. Preserve APP_SECRET and back up PostgreSQL; the current 15-alpine server stays pinned.
+# To enable TOTP, supply a stable 64-hex TWO_FACTOR_ENCRYPTION_KEY via umami.extraEnv secretKeyRef or the existing Secret import.
+# Optional umami.env.MCP_ENABLED: "1" enables API-key-authenticated /mcp; it is not enabled here.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/umami/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/umami/CHANGELOG.md

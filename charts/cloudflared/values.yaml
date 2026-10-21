@@ -6,7 +6,7 @@ fullnameOverride: cloudflared-deployment
 image:
   repository: cloudflare/cloudflared
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "2026.3.0"
+  tag: "2026.10.2"
   pullPolicy: IfNotPresent
 
 selectorLabels:
@@ -49,3 +49,10 @@ topologySpreadConstraints:
     labelSelector:
       matchLabels:
         pod: cloudflared
+
+# Upgrade/configuration notes for chart 0.2.0:
+# Edge IP family now defaults to auto. Optional cloudflared.extraEnv.TUNNEL_EDGE_IP_VERSION: "4" preserves IPv4-only behavior.
+# Optional TUNNEL_NO_PRECHECKS: "true" skips diagnostics. TUNNEL_DISABLE_PATH_NORMALIZATION: "false" enables Access-rule path normalization; review rules before opting in.
+# Keep the existing token Secret and remotely managed ingress; do not add token values here.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/cloudflared/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/cloudflared/CHANGELOG.md

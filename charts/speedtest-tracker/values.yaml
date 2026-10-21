@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: lscr.io/linuxserver/speedtest-tracker
   pullPolicy: IfNotPresent
-  tag: "1.14.0"
+  tag: "1.15.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -312,3 +312,17 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 120
+
+# Upgrade/configuration notes for chart 0.2.0:
+# startupProbe now protects up to 20 minutes of startup migrations. Preserve APP_KEY and back up /config.
+# Remove obsolete UNIFI_API_BASE_URL/UNIFI_API_TOKEN and TELESCOPE_* overrides if present in external configuration.
+# Database image versions remain pinned; no required runtime variable was introduced.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/speedtest-tracker/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/speedtest-tracker/CHANGELOG.md

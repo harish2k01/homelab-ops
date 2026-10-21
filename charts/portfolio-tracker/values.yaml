@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/harish2k01/portfolio-tracker
-  tag: "0.1.0"
+  tag: "0.7.0"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -139,3 +139,10 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Upgrade/configuration notes for chart 0.2.0:
+# Logo support is optional: portfolioTracker.env.LOGO_PROVIDER can select logo.dev or brandfetch when configured.
+# Supply LOGO_DEV_TOKEN or BRANDFETCH_CLIENT_ID through the existing app Secret, never literal credentials here.
+# Preserve NEXTAUTH_SECRET and back up PostgreSQL before the nullable logo-column migration. PostgreSQL 16-alpine stays pinned.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/portfolio-tracker/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/portfolio-tracker/CHANGELOG.md

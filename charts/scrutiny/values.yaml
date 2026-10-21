@@ -58,3 +58,17 @@ resources: {}
 
 probes:
   enabled: true
+initContainer:
+  image:
+    tag: "1.36"
+deploymentStrategy:
+  type: Recreate
+envFrom: []
+
+# Upgrade/configuration notes for chart 0.2.4:
+# InfluxDB stays at the current 2.8 tag; this update does not opt into the newer chart database image.
+# deploymentStrategy.type: Recreate prevents two sidecar database writers sharing a PVC; expect brief downtime.
+# New influxdb.env/envFrom/extraEnv/args and app env/envFrom/extraEnv are optional. Keep credentials in Secrets.
+# The init image stays on the existing stable version; existing scrutiny.yaml is preserved rather than overwritten.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/scrutiny/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/scrutiny/CHANGELOG.md

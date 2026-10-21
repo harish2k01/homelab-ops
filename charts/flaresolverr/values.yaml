@@ -12,4 +12,10 @@ httpRoute:
   enabled: false
 
 resources: {}
+envFrom: []
 
+# Upgrade/configuration notes for chart 0.1.3:
+# Optional env.BROWSER_WAIT_TIMEOUT: "3" helps slow hosts; upstream default "1" preserves the previous wait.
+# Use envFrom for proxy credentials. Optional file logs require a writable mounted destination; API request fields are not global env settings.
+# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/flaresolverr/values.yaml
+# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/flaresolverr/CHANGELOG.md
