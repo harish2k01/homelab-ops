@@ -215,10 +215,6 @@ configs:
     accounts.gitops-preview: apiKey
     accounts.gitops-preview.enabled: "true"
 
-    # API-only local account for reconciliation of merged configuration.
-    accounts.gitops-pr-deployer: apiKey
-    accounts.gitops-pr-deployer.enabled: "true"
-
     # -- Public URL used by Argo CD for redirects and generated links
     url: https://argocd.k8s.harish2k01.xyz
 
@@ -474,12 +470,6 @@ configs:
     # @default -- `''` (See [values.yaml])
     policy.csv: |
       g, gitops-preview, role:readonly
-      p, gitops-pr-deployer, projects, get, default, allow
-      p, gitops-pr-deployer, applications, get, default/*, allow
-      p, gitops-pr-deployer, applications, create, default/*, allow
-      p, gitops-pr-deployer, applications, update, default/*, allow
-      p, gitops-pr-deployer, applications, sync, default/*, allow
-      p, gitops-pr-deployer, applications, delete, default/*, allow
     # Policy rules are in the form:
     #  p, subject, resource, action, object, effect
     # Role definitions and bindings are in the form:

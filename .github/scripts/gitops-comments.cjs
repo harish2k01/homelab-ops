@@ -1,12 +1,13 @@
 const fs = require('node:fs');
 const previewMarker = '<!-- friday-pa:argocd-diff -->';
-const deployMarker = '<!-- friday-pa:argocd-apply -->';
+const legacyDeploymentMarker = '<!-- friday-pa:argocd-apply -->';
 const owned = comment => comment.performed_via_github_app?.slug === 'friday-pa' || comment.user?.login === 'friday-pa[bot]';
 
 module.exports = async ({github, context, core}) => {
   const {owner, repo} = context.repo;
   const head = process.env.GITOPS_HEAD_SHA;
   const mode = process.env.GITOPS_COMMENT_MODE;
+  if (!['pending', 'preview'].includes(mode)) throw new Error('Only preview comment modes are supported');
   const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
   const attempt = Number(process.env.GITHUB_RUN_ATTEMPT || 1);
   const provenance = `<!-- gitops-run:${context.runId}:${attempt} -->`;
@@ -39,9 +40,8 @@ module.exports = async ({github, context, core}) => {
         if (comment.body?.includes('<!-- friday-pa:argocd-new-app:')) {
           await github.rest.issues.deleteComment({owner, repo, comment_id: comment.id});
         }
-        if (comment.body?.includes(deployMarker)) {
-          await github.rest.issues.updateComment({owner, repo, comment_id: comment.id,
-            body: `${deployMarker}\n## Argo CD Reconciliation\n**Status:** Historical result; the pull request has changed since this report.\nNo pre-merge deployment approval is pending.\n`});
+        if (comment.body?.includes(legacyDeploymentMarker)) {
+          await github.rest.issues.deleteComment({owner, repo, comment_id: comment.id});
         }
       }
       return;
@@ -51,30 +51,5 @@ module.exports = async ({github, context, core}) => {
     await upsert(number, existing, previewMarker,
       body.replaceAll('{{GITOPS_PREVIEW_ARTIFACT_URL}}', process.env.GITOPS_PREVIEW_ARTIFACT_URL || runUrl) + `\n[Workflow](${runUrl})\n`);
     return;
-  }
-  const reportPath = 'gitops-pr-apply-output/report.md';
-  const report = fs.existsSync(reportPath) ? fs.readFileSync(reportPath, 'utf8') :
-    `${deployMarker}\n## Argo CD Reconciliation\nNo Application results were produced. Setup or runner execution failed.\n`;
-  const body = `${report}\n**Workflow result:** ${process.env.GITOPS_DEPLOY_RESULT}\n[Workflow and full results](${runUrl})\n`;
-  core.summary.addRaw(body.length <= 60000 ? body : body.slice(0, 60000));
-  await core.summary.write();
-  const base = process.env.GITOPS_BASE_SHA;
-  const pulls = new Map();
-  const commits = base === head ? [{sha: head}] : await github.paginate(github.rest.repos.compareCommitsWithBasehead,
-    {owner, repo, basehead: `${base}...${head}`, per_page: 100}, response => response.data.commits);
-  for (const commit of commits) {
-    const associated = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit,
-      {owner, repo, commit_sha: commit.sha, per_page: 100});
-    for (const pull of associated) if (pull.merged_at && pull.base.ref === 'main') pulls.set(pull.number, pull);
-  }
-  for (const [number] of pulls) {
-    const existing = await comments(number);
-    const current = await github.rest.git.getRef({owner, repo, ref: 'heads/main'});
-    if (current.data.object.sha !== head) {
-      core.notice('Reconciliation superseded; full results remain in this workflow summary');
-      return;
-    }
-    await upsert(number, existing, deployMarker, body.length <= 60000 ? body :
-      `${deployMarker}\n## Argo CD Reconciliation\nResults exceed the comment limit. [Full report](${runUrl})\n`);
   }
 };

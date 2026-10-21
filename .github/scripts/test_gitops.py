@@ -19,7 +19,6 @@ def module(name, filename):
 
 
 preview = module("preview", "gitops-pr-preview.py")
-deploy = module("deploy", "gitops-pr-apply.py")
 URL = "https://github.com/example/ops"
 
 
@@ -428,70 +427,6 @@ class DynamicScopes(unittest.TestCase):
         with self.assertRaisesRegex(g.GitOpsError, "Cluster-scoped resource"):
             registry.normalize(items, app())
 
-
-class Deployment(unittest.TestCase):
-    def test_existing_operation_finishes_before_retrying_sync(self):
-        requests = []
-        def argo(*args, **kwargs):
-            requests.append(args)
-            if args[:2] == ("app", "sync") and sum(item[:2] == ("app", "sync") for item in requests) == 1:
-                raise g.GitOpsError("another operation is already in progress")
-            return ""
-        with patch.object(g, "argo", side_effect=argo), patch.object(deploy, "current_main"), patch.object(deploy, "diagnostics", return_value={"sync": "OutOfSync", "health": "Healthy"}):
-            deploy.request_sync(Path.cwd(), "sha", "demo", lambda: 20)
-        self.assertEqual([item[:2] for item in requests], [("app", "sync"), ("app", "wait"), ("app", "sync")])
-        self.assertIn("--operation", requests[1])
-
-    def test_one_failure_does_not_stop_independent_apps(self):
-        calls = []
-        def argo(*args, **kwargs):
-            calls.append(args)
-            if args[:2] == ("app", "list"):
-                return "[]"
-            if args[:3] == ("app", "create", "one"):
-                raise g.GitOpsError("repository 403")
-            return ""
-        health = {"sync": "Synced", "health": "Healthy"}
-        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo", side_effect=argo), patch.object(deploy, "current_main"), patch.object(deploy, "diagnostics", return_value=health):
-            failed = deploy.reconcile(Path(directory), plan_data([entry("one"), entry("two")]), Path(directory))
-            rows = json.loads((Path(directory) / "results.json").read_text())["applications"]
-        self.assertTrue(failed)
-        self.assertEqual(rows[0]["result"], "FAILED")
-        self.assertEqual(rows[1]["result"], "synced and healthy")
-        self.assertTrue(any(call[:3] == ("app", "create", "two") for call in calls))
-
-    def test_failed_dependency_is_not_attempted(self):
-        def argo(*args, **kwargs):
-            if args[:2] == ("app", "list"):
-                return "[]"
-            raise g.GitOpsError("failed")
-        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo", side_effect=argo), patch.object(deploy, "current_main"), patch.object(deploy, "diagnostics", side_effect=g.GitOpsError("not found")):
-            deploy.reconcile(Path(directory), plan_data([entry("one"), entry("two", dependencies=["one"])]), Path(directory))
-            rows = json.loads((Path(directory) / "results.json").read_text())["applications"]
-        self.assertEqual(rows[1]["result"], "not attempted")
-        self.assertIn("one", rows[1]["error"])
-
-    def test_superseded_run_never_writes(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo", return_value="[]") as argo, patch.object(deploy, "current_main", side_effect=g.GitOpsError("Superseded: newer main")):
-            self.assertTrue(deploy.reconcile(Path(directory), plan_data([entry()]), Path(directory)))
-        self.assertEqual(argo.call_count, 1)
-
-    def test_drift_failure_is_distinguished_from_unhealthy_workloads(self):
-        def argo(*args, **kwargs):
-            if args[:2] == ("app", "list"):
-                return "[]"
-            if args[:2] == ("app", "wait"):
-                raise g.GitOpsError("timeout")
-            return ""
-        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo", side_effect=argo), patch.object(deploy, "current_main"), patch.object(deploy, "diagnostics", return_value={"sync": "OutOfSync", "health": "Healthy"}):
-            deploy.reconcile(Path(directory), plan_data([entry()]), Path(directory))
-            rows = json.loads((Path(directory) / "results.json").read_text())["applications"]
-        self.assertIn("persistent drift", rows[0]["result"])
-
-    def test_dry_run_has_no_cluster_calls(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(g, "argo") as argo:
-            self.assertFalse(deploy.reconcile(Path(directory), plan_data([entry()]), Path(directory), dry_run=True))
-            argo.assert_not_called()
 
 
 if __name__ == "__main__":
