@@ -15,8 +15,12 @@ and repository-scoped GitHub Actions runners.
 | [`charts/`](charts/) | Helm values and local charts |
 | [`infra/`](infra/) | Shared cluster infrastructure |
 | [`manifests/`](manifests/) | Application-specific resources and overlays |
-| [`.github/`](.github/) | Delivery workflows, previews, and validation |
+| [`.github/`](.github/) | PR previews, validation, and image-version updates |
 | [`gitops-policy.yaml`](gitops-policy.yaml) | Application dependencies and deletion behavior |
+
+PRs show the resources that would be added, removed, or modified in the live
+cluster. GitHub Actions does not apply manifests, register Applications, or request
+Argo CD syncs. Existing Applications follow their Argo CD sync policies.
 
 ## Documentation
 
