@@ -38,6 +38,9 @@ httpRoute:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
   hostnames:
     - firefly.k8s.harish2k01.xyz
   rules:

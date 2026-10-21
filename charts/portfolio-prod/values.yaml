@@ -83,6 +83,9 @@ httpRoute:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
   # Hostnames matching HTTP header.
   hostnames:
     - v1.harish2k01.xyz
