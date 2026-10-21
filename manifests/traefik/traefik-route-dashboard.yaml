@@ -7,6 +7,8 @@ spec:
   parentRefs:
     - name: traefik-gateway
       sectionName: websecure
+    - name: traefik-gateway
+      sectionName: web
 
   hostnames:
     - traefik.k8s.harish2k01.xyz

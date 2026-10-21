@@ -24,6 +24,9 @@ httpRoute:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
   hostnames:
     - bazarr-4k.k8s.harish2k01.xyz
 

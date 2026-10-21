@@ -22,6 +22,9 @@ httpRoute:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
   hostnames:
     - umami.harish2k01.xyz
 
