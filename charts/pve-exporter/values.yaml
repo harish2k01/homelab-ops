@@ -1,6 +1,6 @@
 image:
   repository: prompve/prometheus-pve-exporter
-  tag: "3.8.2"
+  tag: "3.10.1"
   pullPolicy: IfNotPresent
 
 proxmox:
@@ -10,6 +10,7 @@ proxmox:
   config:
     existingSecret: pve-exporter
     secretKey: pve.yaml
+    enabled: true
 
 service:
   type: ClusterIP
@@ -21,3 +22,6 @@ serviceMonitor:
   interval: 15s
   labels:
     release: kube-prometheus-stack
+collectors:
+  qdevice: false
+envFrom: []

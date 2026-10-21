@@ -58,3 +58,11 @@ resources: {}
 
 probes:
   enabled: true
+initContainer:
+  image:
+    tag: "1.36"
+deploymentStrategy:
+  type: Recreate
+  # Clear the previous strategy's server-defaulted RollingUpdate settings.
+  rollingUpdate: null
+envFrom: []

@@ -5,7 +5,7 @@ replicaCount: 2
 image:
   repository: tailscale/tailscale
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "v1.96.5"
+  tag: "v1.104.1"
   pullPolicy: IfNotPresent
 
 # Store the auth key in a Sealed Secret or manually created Secret named below.
@@ -15,6 +15,7 @@ authKey:
   existingSecret: tailscale-auth-secret
   existingSecretKey: TS_AUTHKEY
   create: false
+  enabled: true
 
 tailscale:
   hostnameFromPodName: true
@@ -31,11 +32,19 @@ tailscale:
     # The pod's legacy iptables path is failing to create filter/nat tables.
     # Let Tailscale choose nftables when the kernel supports it.
     TS_DEBUG_FIREWALL_MODE: auto
+  bootTimeout: ""
 
 persistence:
   enabled: true
   size: 128Mi
   storageClassName: longhorn
+  # Immutable identity of the existing claims; keep these labels fixed.
+  claimTemplateLabels:
+    app.kubernetes.io/instance: tailscale
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tailscale
+    app.kubernetes.io/version: v1.96.5
+    helm.sh/chart: tailscale-0.1.1
 
 service:
   enabled: true
@@ -56,3 +65,6 @@ topologySpreadConstraints:
       matchLabels:
         app.kubernetes.io/name: tailscale
         app.kubernetes.io/instance: tailscale
+sysctl:
+  image:
+    tag: "1.37"

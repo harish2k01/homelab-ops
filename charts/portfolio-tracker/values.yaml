@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/harish2k01/portfolio-tracker
-  tag: "0.1.0"
+  tag: "0.7.0"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

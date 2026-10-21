@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/gethomepage/homepage
-  tag: "v1.13.1"
+  tag: "v1.13.2"
   pullPolicy: IfNotPresent
 
 podSecurityContext:
@@ -67,3 +67,4 @@ resources: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+envFrom: []

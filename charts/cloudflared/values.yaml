@@ -6,7 +6,7 @@ fullnameOverride: cloudflared-deployment
 image:
   repository: cloudflare/cloudflared
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "2026.3.0"
+  tag: "2026.10.2"
   pullPolicy: IfNotPresent
 
 selectorLabels:
@@ -26,6 +26,9 @@ token:
 cloudflared:
   logLevel: info
   noAutoupdate: true
+  extraEnv:
+    # Preserve the old IPv4 edge behavior on this IPv4-only pod network.
+    TUNNEL_EDGE_IP_VERSION: "4"
   metrics:
     enabled: true
     address: 0.0.0.0:2000

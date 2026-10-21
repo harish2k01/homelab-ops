@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: adguard/adguardhome
-  tag: "v0.107.76"
+  tag: "v0.107.79"
   pullPolicy: IfNotPresent
 
 service:
@@ -63,3 +63,4 @@ readinessProbe:
   failureThreshold: 3
 
 resources: {}
+envFrom: []

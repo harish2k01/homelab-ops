@@ -19,7 +19,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: uptime-kuma
-      targetRevision: 0.1.2
+      targetRevision: 0.2.1
       helm:
         releaseName: uptime-kuma
         valueFiles:

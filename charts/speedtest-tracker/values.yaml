@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: lscr.io/linuxserver/speedtest-tracker
   pullPolicy: IfNotPresent
-  tag: "1.14.0"
+  tag: "1.15.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -312,3 +312,10 @@ readinessProbe:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 120

@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: umami
-      targetRevision: 0.1.0
+      targetRevision: 0.2.1
       helm:
         releaseName: umami
         valueFiles:

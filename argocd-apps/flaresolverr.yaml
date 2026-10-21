@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://harish2k01.github.io/helm-charts
       chart: flaresolverr
-      targetRevision: 0.1.2
+      targetRevision: 0.1.3
       helm:
         releaseName: flaresolverr
         valueFiles:
