@@ -1,4 +1,4 @@
-"""Shared, read-only planning and rendering for GitOps preview and reconciliation."""
+"""Read-only planning and rendering for live-cluster GitOps previews."""
 from __future__ import annotations
 
 import copy
@@ -168,6 +168,10 @@ def run(args, cwd=None, *, attempts=1, timeout=COMMAND_TIMEOUT):
 
 
 def argo(*args, attempts=1, timeout=COMMAND_TIMEOUT):
+    allowed = {("app", "list"), ("app", "get"), ("app", "manifests"),
+               ("app", "get-resource"), ("cluster", "get")}
+    if args[:2] not in allowed:
+        raise GitOpsError("Only read-only Argo CD commands are supported by the preview")
     options = []
     if os.getenv("ARGOCD_SERVER"):
         options += ["--server", os.environ["ARGOCD_SERVER"]]
@@ -319,7 +323,7 @@ def affected(paths, app, repository):
     return False
 
 
-def plan(repo, base, head, repository, *, all_apps=False):
+def plan(repo, base, head, repository):
     base = git(repo, "rev-parse", f"{base}^{{commit}}")
     head = git(repo, "rev-parse", f"{head}^{{commit}}")
     # --no-renames includes both endpoints and avoids ambiguous tab-delimited rename parsing.
@@ -351,7 +355,7 @@ def plan(repo, base, head, repository, *, all_apps=False):
                                 if before_values.get(name) != after_values.get(name))
     for name in sorted(old.keys() | new.keys()):
         before, after = old.get(name), new.get(name)
-        if not (all_apps or name in policy_names or any(affected(paths, app, repository) for app in (before, after) if app)):
+        if not (name in policy_names or any(affected(paths, app, repository) for app in (before, after) if app)):
             continue
         action = "delete" if after is None else "create" if before is None else "update"
         notices = []
@@ -739,21 +743,6 @@ def cell(value):
 
 def block(value, limit=9000):
     return "```diff\n" + value[:limit].replace("```", "` ` `") + ("\n… See full artifact.\n" if len(value) > limit else "\n") + "```\n"
-
-
-def summary(plan_data, rows, title, marker):
-    lines = [marker, f"## {title}", "", f"**Revision:** `{plan_data['head']}`", "",
-             "| Application | Action | Result |", "|---|---|---|"]
-    for row in rows:
-        lines.append(f"| `{cell(row['name'])}` | {cell(row['action'])} | {cell(row['result'])} |")
-    if not rows:
-        state = "Not evaluated" if plan_data.get("fatal") or plan_data.get("applications") else "No deployment changes"
-        lines.append(f"| — | — | {state} |")
-    if plan_data.get("unmapped"):
-        lines += ["", "**Unmapped deployment files (validation failed):**", *[f"- `{cell(x)}`" for x in plan_data["unmapped"]]]
-    lines += ["", "Merge authorizes reconciliation. Deployment follows GitHub environment protection settings.",
-              "Full per-Application comparisons and source identities are in the workflow artifact."]
-    return "\n".join(lines) + "\n"
 
 
 def write_json(path, data):

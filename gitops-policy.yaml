@@ -1,6 +1,7 @@
 # Deleting or renaming an Application requires an explicit decision by name.
-# retain removes the Application without deleting its workloads; delete cascades.
+# retain predicts keeping workloads; delete predicts cascading resource removal.
+# This policy guides the preview only; GitHub Actions does not delete Applications.
 deletions: {}
-# Dependencies must be synced and healthy before dependent Applications run.
-# Lower argocd.argoproj.io/sync-wave values also run before higher values.
+# Relationships and sync waves order the comparison and validate dependencies.
+# They do not schedule or execute synchronization from GitHub Actions.
 dependencies: {}
