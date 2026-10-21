@@ -24,8 +24,3 @@ httpRoute:
 resources: {}
 envFrom: []
 
-# Upgrade/configuration notes for chart 0.2.0:
-# Optional env.PROWLARR__SERVER__ALLOWEDHOSTS and PROWLARR__SERVER__TRUSTEDNETWORKS accept deployment-specific host/network lists.
-# Use envFrom for external database credentials. Updated health probes use Host: localhost; indexer settings remain app-owned.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/prowlarr/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/prowlarr/CHANGELOG.md

@@ -167,9 +167,3 @@ extraEnv: []
 extraVolumes: []
 extraVolumeMounts: []
 
-# Upgrade/configuration notes for chart 0.2.0:
-# Preserve /app/data and back up the active MariaDB database before automatic app migrations. MariaDB stays at version 11.
-# Optional env.UPTIME_KUMA_SQLITE_SINGLE_CONNECTION defaults true; it only affects SQLite installations.
-# New extraEnv/envFrom and volume hooks support Secret-backed configuration; browser monitors still require the full image rather than slim.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/uptime-kuma/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/uptime-kuma/CHANGELOG.md

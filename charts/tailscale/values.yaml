@@ -62,9 +62,3 @@ sysctl:
   image:
     tag: "1.37"
 
-# Upgrade/configuration notes for chart 0.1.4:
-# Optional tailscale.bootTimeout: "90s" extends initial control-plane connection time (upstream default 60s).
-# authKey.enabled stays true for the existing Secret; disable only for a separately configured OAuth/workload-identity deployment.
-# Keep per-pod state and tailnet identity. The sysctl init image stays on the current stable tag rather than the new unstable chart default.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/tailscale/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/tailscale/CHANGELOG.md

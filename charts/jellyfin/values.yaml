@@ -61,8 +61,3 @@ startupProbe:
   timeoutSeconds: 5
   failureThreshold: 90
 
-# Upgrade/configuration notes for chart 0.2.0:
-# startupProbe now allows 15 minutes for database migrations; back up the complete /config PVC.
-# Keep existing media/GPU mounts and permissions. Hardware acceleration options remain app-managed.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/jellyfin/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/jellyfin/CHANGELOG.md

@@ -37,8 +37,3 @@ resources:
     memory: 1Gi
 envFrom: []
 
-# Upgrade/configuration notes for chart 0.2.0:
-# Preserve /config and resume state. Reverse-proxy support/trusted proxies remain qBittorrent settings; do not disable CSRF/host validation.
-# New envFrom supports Secret imports. Keep WEBUI_PORT/TORRENTING_PORT aligned with service/container port overrides.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/qbittorrent/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/qbittorrent/CHANGELOG.md

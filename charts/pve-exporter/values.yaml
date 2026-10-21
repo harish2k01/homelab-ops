@@ -26,9 +26,3 @@ collectors:
   qdevice: false
 envFrom: []
 
-# Upgrade/configuration notes for chart 0.2.0:
-# The upstream QDevice collector is new. It is disabled here until its Proxmox API permissions/use are verified.
-# Keep proxmox.config.enabled true for the existing Secret-backed pve.yml. Environment-only auth can disable it and use envFrom.
-# Optional extraArgs exposes collector flags; verify real scrapes after rollout.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/pve-exporter/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/pve-exporter/CHANGELOG.md

@@ -45,8 +45,3 @@ startupProbe:
   periodSeconds: 5
   failureThreshold: 60
 
-# Upgrade/configuration notes for chart 0.1.1:
-# The chart adds reference material without changing the deployed app/parser version.
-# Preserve existing parser endpoint/authentication and config PVC; optional upstream settings remain opt-in.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/profilarr/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/profilarr/CHANGELOG.md

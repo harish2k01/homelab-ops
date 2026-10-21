@@ -23,9 +23,3 @@ httpRoute:
 resources: {}
 envFrom: []
 
-# Upgrade/configuration notes for chart 0.2.0:
-# Optional env.DB_POOL_SIZE controls external PostgreSQL pooling (default 10); no override is needed for SQLite.
-# Library sync/enable GET parameters were removed; integrations must use POST sync and PUT library update endpoints.
-# Custom webhook consumers must accept discordIDs arrays rather than discordID strings. Preserve /app/config and back it up.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/seerr/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/seerr/CHANGELOG.md

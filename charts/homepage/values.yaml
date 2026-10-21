@@ -69,8 +69,3 @@ tolerations: []
 affinity: {}
 envFrom: []
 
-# Upgrade/configuration notes for chart 0.1.1:
-# Configuration remains owned by the existing /app/config PVC while homepage.config.enabled is false.
-# Keep persisted dashboard files and allowed hosts; the patch release needs no new runtime setting.
-# Full supported runtime options: https://github.com/harish2k01/helm-charts/blob/main/charts/homepage/values.yaml
-# App/chart changes: https://github.com/harish2k01/helm-charts/blob/main/charts/homepage/CHANGELOG.md
