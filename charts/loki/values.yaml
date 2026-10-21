@@ -821,7 +821,10 @@ loki:
       up_to: 3
   # @schema skipProperties:true;additionalProperties:true
   # --  Optional compactor configuration
-  compactor: {}
+  compactor:
+    working_directory: /var/loki/compactor
+    retention_enabled: true
+    delete_request_store: filesystem
   # @schema skipProperties:true;additionalProperties:true
   # --  Optional compactor grpc client configuration
   compactor_grpc_client: {}
@@ -2103,7 +2106,7 @@ singleBinary:
     accessModes:
       - ReadWriteOnce
     # -- Size of persistent disk
-    size: 5Gi
+    size: 20Gi
     # @schema type:[string, null]
     # -- Storage class to be used.
     # If defined, storageClassName: <storageClass>.

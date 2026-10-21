@@ -38,11 +38,15 @@ alloy:
     # -- Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values.
     content: |-
       logging {
-        level = "debug"
+        level = "info"
         format = "logfmt"
       }
       discovery.kubernetes "pods" {
         role = "pod"
+        selectors {
+          role = "pod"
+          field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
+        }
       }
       discovery.relabel "pods" {
         targets = discovery.kubernetes.pods.targets
@@ -72,8 +76,14 @@ alloy:
         }
 
         rule {
-          source_labels = ["namespace"]
-          regex = "kube-system|monitoring"
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label = "node"
+          action = "replace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex = "monitoring;alloy"
           action = "drop"
         }
       }
@@ -85,7 +95,7 @@ alloy:
         forward_to = [loki.write.loki.receiver]
 
         stage.match {
-          selector = "{instance=~\".*\"}"
+          selector = "{namespace=~\".+\"} |~ \"^[[:space:]]*[{]\""
           stage.json {
             expressions = {
               level = "\"level\"",
@@ -147,7 +157,7 @@ alloy:
   initialDelaySeconds: 10
 
   # -- Timeout for readiness probe.
-  timeoutSeconds: 1
+  timeoutSeconds: 5
 
   # --  Base path where the UI is exposed.
   uiPathPrefix: /
@@ -190,10 +200,10 @@ alloy:
 
   mounts:
     # -- Mount /var/log from the host into the container for log collection.
-    varlog: true
+    varlog: false
     # -- Mount /var/lib/docker/containers from the host into the container for log
     # collection.
-    dockercontainers: true
+    dockercontainers: false
 
     # -- Extra volume mounts to add into the Grafana Alloy container. Does not
     # affect the watch container.
@@ -208,8 +218,8 @@ alloy:
       cpu: 50m
       memory: 128Mi
     limits:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 500m
+      memory: 512Mi
 
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
@@ -385,7 +395,10 @@ controller:
   nodeSelector: {}
 
   # -- Tolerations to apply to Grafana Alloy pods.
-  tolerations: []
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
 
   # -- Topology Spread Constraints to apply to Grafana Alloy pods.
   topologySpreadConstraints: []
