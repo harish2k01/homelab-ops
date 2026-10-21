@@ -38,6 +38,13 @@ persistence:
   enabled: true
   size: 128Mi
   storageClassName: longhorn
+  # Immutable identity of the existing claims; keep these labels fixed.
+  claimTemplateLabels:
+    app.kubernetes.io/instance: tailscale
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: tailscale
+    app.kubernetes.io/version: v1.96.5
+    helm.sh/chart: tailscale-0.1.1
 
 service:
   enabled: true

@@ -43,6 +43,13 @@ database:
         - ReadWriteOnce
       size: 1Gi
       storageClassName: longhorn
+      # Immutable identity of the existing claims; keep these labels fixed.
+      claimTemplateLabels:
+        app.kubernetes.io/instance: umami
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: umami
+        app.kubernetes.io/version: 3.1.0
+        helm.sh/chart: umami-0.1.0
     resources:
       requests:
         cpu: 100m

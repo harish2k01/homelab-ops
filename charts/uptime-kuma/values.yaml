@@ -70,6 +70,13 @@ database:
         - ReadWriteOnce
       size: 2Gi
       existingClaim: ""
+      # Immutable identity of the existing claims; keep these labels fixed.
+      claimTemplateLabels:
+        app.kubernetes.io/instance: uptime-kuma
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: uptime-kuma
+        app.kubernetes.io/version: 2.2.1-slim
+        helm.sh/chart: uptime-kuma-0.1.2
     resources: {}
     nodeSelector: {}
     podSecurityContext:
