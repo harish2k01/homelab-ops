@@ -12,16 +12,17 @@ persistence:
     size: 256Mi
     storageClassName: longhorn
 
-httpRoute:
-  enabled: true
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - prowlarr.k8s.harish2k01.xyz
 
 resources: {}

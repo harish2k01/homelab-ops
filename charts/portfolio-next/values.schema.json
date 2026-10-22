@@ -1,0 +1,362 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "portfolio-next values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "default": 1,
+      "description": "Number of stateless web replicas.",
+      "minimum": 1
+    },
+    "image": {
+      "type": "object",
+      "description": "Container image identity.",
+      "additionalProperties": true,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "default": "ghcr.io/harish2k01/portfolio-next",
+          "description": "Image registry and repository.",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "default": "",
+          "description": "Published image tag; empty uses chart appVersion.",
+          "pattern": "^$|^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+        },
+        "digest": {
+          "type": "string",
+          "default": "",
+          "description": "Immutable SHA-256 image digest, preferred over tag.",
+          "pattern": "^$|^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "default": "IfNotPresent",
+          "description": "When Kubernetes pulls the image.",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "default": [],
+      "description": "Existing registry credential Secrets.",
+      "items": {
+        "type": "object",
+        "default": {},
+        "description": "Kubernetes configuration entry.",
+        "additionalProperties": true
+      }
+    },
+    "nameOverride": {
+      "type": "string",
+      "default": "",
+      "description": "Override the chart resource name."
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "default": "",
+      "description": "Override the full release resource name."
+    },
+    "podAnnotations": {
+      "type": "object",
+      "default": {},
+      "description": "Additional pod annotations.",
+      "additionalProperties": true
+    },
+    "podLabels": {
+      "type": "object",
+      "default": {},
+      "description": "Additional pod labels.",
+      "additionalProperties": true
+    },
+    "automountServiceAccountToken": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mount Kubernetes API credentials; unnecessary for this site."
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "default": {
+        "runAsNonRoot": true,
+        "runAsUser": 101,
+        "runAsGroup": 101,
+        "fsGroup": 101,
+        "seccompProfile": {
+          "type": "RuntimeDefault"
+        }
+      },
+      "description": "Pod identity and seccomp settings.",
+      "additionalProperties": true
+    },
+    "securityContext": {
+      "type": "object",
+      "default": {
+        "allowPrivilegeEscalation": false,
+        "capabilities": {
+          "drop": [
+            "ALL"
+          ]
+        },
+        "readOnlyRootFilesystem": true
+      },
+      "description": "Container isolation settings.",
+      "additionalProperties": true
+    },
+    "service": {
+      "type": "object",
+      "description": "Internal HTTP service.",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "ClusterIP",
+          "description": "Kubernetes Service type.",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "default": 80,
+          "description": "Service port; container uses 8080.",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Optional Ingress routing.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create an Ingress."
+        },
+        "className": {
+          "type": "string",
+          "default": "",
+          "description": "Ingress controller class."
+        },
+        "annotations": {
+          "type": "object",
+          "default": {},
+          "description": "Ingress annotations.",
+          "additionalProperties": true
+        },
+        "hosts": {
+          "type": "array",
+          "default": [
+            {
+              "host": "portfolio.example.com",
+              "paths": [
+                {
+                  "path": "/",
+                  "pathType": "Prefix"
+                }
+              ]
+            }
+          ],
+          "description": "Hostname and path mappings.",
+          "items": {
+            "type": "object",
+            "default": {},
+            "description": "Kubernetes configuration entry.",
+            "additionalProperties": true
+          }
+        },
+        "tls": {
+          "type": "array",
+          "default": [],
+          "description": "TLS Secret and hostname mappings.",
+          "items": {
+            "type": "object",
+            "default": {},
+            "description": "Kubernetes configuration entry.",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "default": {
+        "requests": {
+          "cpu": "10m",
+          "memory": "32Mi"
+        },
+        "limits": {
+          "cpu": "250m",
+          "memory": "128Mi"
+        }
+      },
+      "description": "CPU and memory requests and limits.",
+      "additionalProperties": true
+    },
+    "livenessProbe": {
+      "type": "object",
+      "default": {
+        "httpGet": {
+          "path": "/healthz",
+          "port": "http"
+        },
+        "initialDelaySeconds": 5
+      },
+      "description": "NGINX liveness probe.",
+      "additionalProperties": true
+    },
+    "readinessProbe": {
+      "type": "object",
+      "default": {
+        "httpGet": {
+          "path": "/healthz",
+          "port": "http"
+        }
+      },
+      "description": "NGINX readiness probe.",
+      "additionalProperties": true
+    },
+    "nodeSelector": {
+      "type": "object",
+      "default": {},
+      "description": "Node selection labels.",
+      "additionalProperties": true
+    },
+    "tolerations": {
+      "type": "array",
+      "default": [],
+      "description": "Node taint tolerations.",
+      "items": {
+        "type": "object",
+        "default": {},
+        "description": "Kubernetes configuration entry.",
+        "additionalProperties": true
+      }
+    },
+    "affinity": {
+      "type": "object",
+      "default": {},
+      "description": "Pod/node placement rules.",
+      "additionalProperties": true
+    },
+    "httpRoutes": {
+      "type": "object",
+      "default": {
+        "main": {
+          "enabled": false,
+          "annotations": {},
+          "parentRefs": [],
+          "hostnames": [],
+          "rules": [
+            {
+              "matches": [
+                {
+                  "path": {
+                    "type": "PathPrefix",
+                    "value": "/"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "description": "Named HTTPRoutes with independent Gateway references, hostname lists, annotations and rules.",
+      "propertyNames": {
+        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 40
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Create this named route."
+          },
+          "annotations": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Annotations for this route."
+          },
+          "parentRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "description": "Gateway and optional listener attachments for this route."
+          },
+          "hostnames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Explicit hostnames served by this route."
+          },
+          "rules": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Gateway API rules and filters; backendRefs are supplied by the chart. Defaults to PathPrefix /."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "enabled": {
+                  "const": false
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            },
+            "then": {},
+            "else": {
+              "required": [
+                "parentRefs",
+                "hostnames"
+              ],
+              "properties": {
+                "parentRefs": {
+                  "minItems": 1
+                },
+                "hostnames": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

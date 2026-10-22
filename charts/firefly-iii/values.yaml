@@ -31,24 +31,35 @@ ingress:
 
 # Optional Gateway API HTTPRoute.
 # Use this instead of ingress when your cluster exposes apps through Gateway API.
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - firefly.k8s.harish2k01.xyz
-    - firefly.harish2k01.xyz
-  rules:
+    rules:
     - matches:
-        - path:
-            type: PathPrefix
-            value: /
+      - path:
+          type: PathPrefix
+          value: /
+  external:
+    enabled: true
+    parentRefs:
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: websecure
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: web
+    hostnames:
+    - firefly.harish2k01.xyz
 
 # Persistent storage for Firefly III uploaded attachments.
 # Set existingClaim to reuse a PVC created outside this chart.

@@ -1,0 +1,7 @@
+Portfolio Tracker has been installed.
+
+Replace portfolioTracker.secrets.inline.NEXTAUTH_SECRET and
+database.postgresql.auth.password before exposing this deployment.
+
+To access Portfolio Tracker inside the cluster:
+  http://{{ include "portfolio-tracker.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}

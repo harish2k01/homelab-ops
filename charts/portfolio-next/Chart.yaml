@@ -1,0 +1,20 @@
+apiVersion: v2
+name: portfolio-next
+description: Static Astro portfolio served by unprivileged NGINX
+type: application
+version: 0.2.0
+appVersion: "v0.1.0"
+home: https://github.com/harish2k01/portfolio-next
+sources:
+  - https://github.com/harish2k01/portfolio-next
+keywords:
+  - portfolio
+  - astro
+  - website
+maintainers:
+  - name: harish2k01
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/images: |
+    - name: portfolio-next
+      image: ghcr.io/harish2k01/portfolio-next:v0.1.0

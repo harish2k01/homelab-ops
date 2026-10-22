@@ -26,24 +26,35 @@ ingress:
   hosts: []
   tls: []
 
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - bentopdf.k8s.harish2k01.xyz
-    - bentopdf.harish2k01.xyz
-  rules:
+    rules:
     - matches:
-        - path:
-            type: PathPrefix
-            value: /
+      - path:
+          type: PathPrefix
+          value: /
+  external:
+    enabled: true
+    parentRefs:
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: websecure
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: web
+    hostnames:
+    - bentopdf.harish2k01.xyz
 
 resources: {}
 

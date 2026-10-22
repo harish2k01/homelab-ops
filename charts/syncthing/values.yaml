@@ -100,23 +100,24 @@ ingress:
   tls: []
 
 # Optional Gateway API HTTPRoute for the Web UI.
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - syncthing.k8s.harish2k01.xyz
-  rules:
+    rules:
     - matches:
-        - path:
-            type: PathPrefix
-            value: /
+      - path:
+          type: PathPrefix
+          value: /
 
 resources: {}
 

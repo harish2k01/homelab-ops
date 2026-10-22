@@ -1,0 +1,494 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "portfolio-tracker values",
+  "description": "Configurable Helm values for Portfolio Tracker.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "Number of application replicas."
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "default": "ghcr.io/harish2k01/portfolio-tracker"
+        },
+        "tag": {
+          "type": "string",
+          "default": "0.7.0"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ],
+          "default": "IfNotPresent"
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "default": [],
+      "items": {}
+    },
+    "nameOverride": {
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "default": ""
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "podLabels": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "securityContext": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer",
+            "ExternalName"
+          ],
+          "default": "ClusterIP"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3000
+        },
+        "targetPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3000
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "className": {
+          "type": "string",
+          "default": ""
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "hosts": {
+          "type": "array",
+          "default": [],
+          "items": {}
+        },
+        "tls": {
+          "type": "array",
+          "default": [],
+          "items": {}
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "postgresql": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "image": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "default": "postgres"
+                },
+                "tag": {
+                  "type": "string",
+                  "default": "16-alpine"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ],
+                  "default": "IfNotPresent"
+                }
+              }
+            },
+            "service": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "port": {
+                  "type": "integer",
+                  "default": 5432
+                }
+              }
+            },
+            "auth": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "database": {
+                  "type": "string",
+                  "default": "portfolio_tracker"
+                },
+                "username": {
+                  "type": "string",
+                  "default": "portfolio_tracker"
+                },
+                "password": {
+                  "type": "string",
+                  "default": "portfolio_tracker"
+                },
+                "existingSecret": {
+                  "type": "string",
+                  "default": ""
+                },
+                "passwordKey": {
+                  "type": "string",
+                  "default": "db-password"
+                }
+              }
+            },
+            "persistence": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "storageClassName": {
+                  "type": "string",
+                  "default": ""
+                },
+                "accessModes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "size": {
+                  "type": "string",
+                  "default": "8Gi"
+                },
+                "existingClaim": {
+                  "type": "string",
+                  "default": ""
+                },
+                "claimTemplateLabels": {
+                  "type": "object",
+                  "default": {},
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Pinned labels merged into the immutable StatefulSet volume claim template. Preserve existing labels on upgrade; keep version labels fixed if migrating from older charts."
+                }
+              }
+            },
+            "resources": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "nodeSelector": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "tolerations": {
+              "type": "array",
+              "items": {}
+            },
+            "affinity": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "podSecurityContext": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "healthcheck": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "url": {
+              "type": "string",
+              "default": ""
+            },
+            "existingSecret": {
+              "type": "string",
+              "default": ""
+            },
+            "databaseUrlKey": {
+              "type": "string",
+              "default": "DATABASE_URL"
+            }
+          }
+        }
+      }
+    },
+    "portfolioTracker": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "secrets": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "default": ""
+            },
+            "rolloutToken": {
+              "type": "string",
+              "default": "1"
+            },
+            "inline": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "NEXTAUTH_SECRET": {
+                  "type": "string",
+                  "default": "replace-me-with-a-long-random-string"
+                },
+                "SMTP_USER": {
+                  "type": "string",
+                  "default": ""
+                },
+                "SMTP_PASS": {
+                  "type": "string",
+                  "default": ""
+                },
+                "LOGO_DEV_TOKEN": {
+                  "type": "string",
+                  "description": "Optional publishable logo-provider identifier.",
+                  "default": ""
+                },
+                "BRANDFETCH_CLIENT_ID": {
+                  "type": "string",
+                  "description": "Optional publishable logo-provider identifier.",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "properties": {
+            "LOGO_PROVIDER": {
+              "type": "string",
+              "description": "Preferred configured asset-logo provider: logo_dev or brandfetch.",
+              "enum": [
+                "",
+                "logo_dev",
+                "logodev",
+                "brandfetch"
+              ],
+              "default": ""
+            }
+          }
+        },
+        "envFrom": {
+          "type": "array",
+          "items": {}
+        },
+        "extraVolumes": {
+          "type": "array",
+          "items": {}
+        },
+        "extraVolumeMounts": {
+          "type": "array",
+          "items": {}
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "livenessProbe": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "readinessProbe": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {}
+    },
+    "affinity": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "httpRoutes": {
+      "type": "object",
+      "default": {
+        "main": {
+          "enabled": false,
+          "annotations": {},
+          "parentRefs": [],
+          "hostnames": [],
+          "rules": [
+            {
+              "matches": [
+                {
+                  "path": {
+                    "type": "PathPrefix",
+                    "value": "/"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "description": "Named HTTPRoutes with independent Gateway references, hostname lists, annotations and rules.",
+      "propertyNames": {
+        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 40
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Create this named route."
+          },
+          "annotations": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Annotations for this route."
+          },
+          "parentRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "description": "Gateway and optional listener attachments for this route."
+          },
+          "hostnames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Explicit hostnames served by this route."
+          },
+          "rules": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Gateway API rules and filters; backendRefs are supplied by the chart. Defaults to PathPrefix /."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "enabled": {
+                  "const": false
+                }
+              },
+              "required": [
+                "enabled"
+              ]
+            },
+            "then": {},
+            "else": {
+              "required": [
+                "parentRefs",
+                "hostnames"
+              ],
+              "properties": {
+                "parentRefs": {
+                  "minItems": 1
+                },
+                "hostnames": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

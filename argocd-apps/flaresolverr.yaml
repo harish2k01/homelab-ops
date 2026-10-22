@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://harish2k01.github.io/helm-charts
+    - repoURL: https://charts.harish2k01.in
       chart: flaresolverr
-      targetRevision: 0.1.3
+      targetRevision: 0.2.0
       helm:
         releaseName: flaresolverr
         valueFiles:

@@ -25,16 +25,17 @@ parser:
       cpu: 100m
       memory: 128Mi
 
-httpRoute:
-  enabled: true
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - profilarr.k8s.harish2k01.xyz
 
 resources:

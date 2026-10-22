@@ -1,0 +1,20 @@
+{{- if .Values.database.postgresql.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "portfolio-tracker.fullname" . }}-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "portfolio-tracker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  clusterIP: None
+  selector:
+    {{- include "portfolio-tracker.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+  ports:
+    - port: {{ .Values.database.postgresql.service.port }}
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+{{- end }}

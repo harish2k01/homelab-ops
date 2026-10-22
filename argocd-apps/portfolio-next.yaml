@@ -5,17 +5,6 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    - repoURL: https://harish2k01.github.io/helm-charts
-      chart: portfolio-next
-      targetRevision: 0.1.0
-      helm:
-        releaseName: portfolio-next
-        valueFiles:
-          - $values/charts/portfolio-next/values.yaml
-    - repoURL: https://github.com/harish2k01/homelab-ops
-      targetRevision: main
-      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: portfolio
@@ -24,5 +13,11 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+    - CreateNamespace=true
   revisionHistoryLimit: 3
+  source:
+    repoURL: https://github.com/harish2k01/homelab-ops
+    targetRevision: main
+    path: charts/portfolio-next
+    helm:
+      releaseName: portfolio-next

@@ -1,24 +1,29 @@
+# Run one replica by default. Increase only after configuring an external
+# PostgreSQL database and confirming migrations are serialized safely.
 replicaCount: 1
 
 image:
+  # Image published by the portfolio-tracker repository release workflow.
   repository: ghcr.io/harish2k01/portfolio-tracker
-  tag: "0.7.0"
   pullPolicy: IfNotPresent
+  # Pin this to a semantic release version for repeatable GitOps deployments.
+  tag: "0.7.0"
 
+# Set when pulling images from a private registry or mirror.
 imagePullSecrets: []
+
+# Override generated resource names when embedding this chart in larger releases.
 nameOverride: ""
 fullnameOverride: ""
 
+# Add annotations or labels consumed by policy engines, reloaders, or operators.
 podAnnotations: {}
 podLabels: {}
+
+# Pod and container security context knobs are left empty so clusters can apply
+# their own defaults through admission policies.
 podSecurityContext: {}
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  seccompProfile:
-    type: RuntimeDefault
+securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ ALL ] }, seccompProfile: { type: RuntimeDefault } }
 
 service:
   type: ClusterIP
@@ -32,24 +37,81 @@ ingress:
   hosts: []
   tls: []
 
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
-    - name: traefik-gateway
-      namespace: traefik
-      sectionName: websecure
-    - name: traefik-gateway
-      namespace: traefik
-      sectionName: web
-  hostnames:
-    - portfolio-tracker.k8s.harish2k01.xyz
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
+# Gateway API routing. Requires Gateway API CRDs and a compatible controller.
+# Map keys (main, internal, external, etc.) are names you choose, not access policies.
+# Every enabled entry creates one HTTPRoute named <app-fullname>-<key>.
+httpRoutes:
+  main:
+    # Keep disabled until you provide Gateway references and application hostnames.
+    # Additional entries default to enabled when their enabled field is omitted.
+    enabled: false
+    # Per-route metadata, for example controller-specific annotations.
+    annotations: {}
+    # Attach this route to one or more Gateways/listeners. The Gateway must allow
+    # routes from this app's namespace. Omit namespace for a same-namespace Gateway;
+    # omit sectionName to target compatible listeners on that Gateway.
+    parentRefs: []
+    #  - name: internal-gateway
+    #    namespace: ingress
+    #    sectionName: https
+    #  - name: second-internal-gateway
+    #    namespace: ingress
+    #    sectionName: https
+    # Requests can match ANY hostname below, on ANY compatible parent above.
+    # These lists do not pair hostnames with individual Gateways by position.
+    hostnames: []
+    #  - app.internal.example.com
+    #  - app-alias.internal.example.com
+    # Match request paths/headers/methods and optionally apply Gateway API filters.
+    # Rules default to PathPrefix / when omitted. Backend references are generated
+    # from this chart's application Service and HTTP port, not supplied here.
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        # filters:
+        #   - type: RequestHeaderModifier
+        #     requestHeaderModifier:
+        #       set:
+        #         - name: X-Route
+        #           value: internal
+        # Use a separate entry when public hostnames should attach to another Gateway.
+        # external:
+        #   enabled: true
+        #   annotations: {}
+        #   parentRefs:
+        #     - name: external-gateway
+        #       namespace: ingress
+        #       sectionName: https
+        #   hostnames:
+        #     - app.example.com
+        #     - app-alias.example.com
+        #   rules:
+        #     - matches:
+        #         - path:
+        #             type: PathPrefix
+        #             value: /
 
+        # Portfolio Tracker requires PostgreSQL. Use the bundled StatefulSet for simple
+        # installs, or disable it and enable database.external for a managed database.
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: websecure
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: web
+    hostnames:
+      - portfolio-tracker.k8s.harish2k01.xyz
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
 database:
   postgresql:
     enabled: true
@@ -62,6 +124,9 @@ database:
     auth:
       database: portfolio_tracker
       username: portfolio_tracker
+      # Default is for quick evaluation. Use existingSecret or override this for production.
+      password: "portfolio_tracker"
+      # Existing secret must contain passwordKey.
       existingSecret: portfolio-tracker-postgresql-secret
       passwordKey: db-password
     persistence:
@@ -70,14 +135,11 @@ database:
       accessModes:
         - ReadWriteOnce
       size: 2Gi
+      # Immutable claim labels: pin the current template labels for existing installs.
+      # Keep historical version labels fixed; new installs use stable defaults.
+      claimTemplateLabels: {}
       existingClaim: ""
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 1Gi
+    resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 500m, memory: 1Gi } }
     nodeSelector: {}
     tolerations: []
     affinity: {}
@@ -90,19 +152,30 @@ database:
 
   external:
     enabled: false
+    # Full PostgreSQL connection URL. Prefer existingSecret for production.
     url: ""
+    # Existing secret must contain databaseUrlKey.
     existingSecret: ""
     databaseUrlKey: DATABASE_URL
 
 portfolioTracker:
+  # Use an existing Secret in production. It must contain NEXTAUTH_SECRET and
+  # may also contain SMTP_USER and SMTP_PASS.
   secrets:
-    # Must contain NEXTAUTH_SECRET and may contain SMTP_USER and SMTP_PASS.
     existingSecret: portfolio-tracker-app-secret
+    # Change rolloutToken when externally managed secrets change and pods should restart.
     rolloutToken: "1"
     inline:
+      # Replace before exposing the app. Generate with: openssl rand -base64 32
       NEXTAUTH_SECRET: ""
       SMTP_USER: ""
       SMTP_PASS: ""
+      # Optional publishable logo-provider identifiers; leave blank to disable.
+      LOGO_DEV_TOKEN: ""
+      BRANDFETCH_CLIENT_ID: ""
+
+  # Non-secret runtime environment. DATABASE_URL and secret values are managed
+  # separately by the chart.
   env:
     NEXTAUTH_URL: https://portfolio-tracker.k8s.harish2k01.xyz
     APP_BASE_URL: https://portfolio-tracker.k8s.harish2k01.xyz
@@ -110,16 +183,17 @@ portfolioTracker:
     SMTP_PORT: "587"
     SMTP_FROM: lab@harish2k01.xyz
     SMTP_SECURE: "false"
+    # Prefer logo_dev or brandfetch when its corresponding identifier is set.
+    LOGO_PROVIDER: ""
+
+  # Additional envFrom entries for ConfigMaps or Secrets managed outside the chart.
   envFrom: []
+
+  # Extra volumes are useful for mounting custom CA bundles.
   extraVolumes: []
   extraVolumeMounts: []
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 750m
-      memory: 1Gi
+
+  resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 750m, memory: 1Gi } }
 
 livenessProbe:
   httpGet:
