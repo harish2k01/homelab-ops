@@ -16,6 +16,7 @@ spec:
 
   hostnames:
     - immich.k8s.harish2k01.xyz
+    - immich.harish2k01.xyz
 
   rules:
     - matches:

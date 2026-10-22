@@ -26,6 +26,7 @@ httpRoute:
       namespace: traefik
       sectionName: web
   hostnames:
+    - umami.k8s.harish2k01.xyz
     - umami.harish2k01.xyz
 
 database:

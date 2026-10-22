@@ -53,6 +53,7 @@ httpRoute:
       sectionName: web
   hostnames:
     - jellyfin.k8s.harish2k01.xyz
+    - jellyfin.harish2k01.xyz
 
 resources: {}
 envFrom: []

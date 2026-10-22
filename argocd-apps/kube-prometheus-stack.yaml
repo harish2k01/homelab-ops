@@ -37,6 +37,8 @@ spec:
       jsonPointers:
         - /spec/parentRefs/0/group
         - /spec/parentRefs/0/kind
+        - /spec/parentRefs/1/group
+        - /spec/parentRefs/1/kind
         - /spec/rules/0/backendRefs/0/group
         - /spec/rules/0/backendRefs/0/kind
         - /spec/rules/0/backendRefs/0/weight
@@ -47,6 +49,8 @@ spec:
       jsonPointers:
         - /spec/parentRefs/0/group
         - /spec/parentRefs/0/kind
+        - /spec/parentRefs/1/group
+        - /spec/parentRefs/1/kind
         - /spec/rules/0/backendRefs/0/group
         - /spec/rules/0/backendRefs/0/kind
         - /spec/rules/0/backendRefs/0/weight
@@ -57,6 +61,8 @@ spec:
       jsonPointers:
         - /spec/parentRefs/0/group
         - /spec/parentRefs/0/kind
+        - /spec/parentRefs/1/group
+        - /spec/parentRefs/1/kind
         - /spec/rules/0/backendRefs/0/group
         - /spec/rules/0/backendRefs/0/kind
         - /spec/rules/0/backendRefs/0/weight

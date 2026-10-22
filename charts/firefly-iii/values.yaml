@@ -43,6 +43,7 @@ httpRoute:
       sectionName: web
   hostnames:
     - firefly.k8s.harish2k01.xyz
+    - firefly.harish2k01.xyz
   rules:
     - matches:
         - path:

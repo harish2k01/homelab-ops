@@ -107,6 +107,7 @@ httpRoute:
       namespace: traefik
       sectionName: web
   hostnames:
+    - ghost.k8s.harish2k01.xyz
     - harish2k01.in
 
 resources:

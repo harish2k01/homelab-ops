@@ -38,6 +38,7 @@ httpRoute:
       sectionName: web
   hostnames:
     - bentopdf.k8s.harish2k01.xyz
+    - bentopdf.harish2k01.xyz
   rules:
     - matches:
         - path:
