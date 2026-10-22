@@ -16,8 +16,8 @@ httpRoute:
       namespace: traefik
       sectionName: web
   hostnames:
-    - harish2k01.xyz
     - portfolio.k8s.harish2k01.xyz
+    - harish2k01.xyz
 resources:
   requests:
     cpu: 10m
