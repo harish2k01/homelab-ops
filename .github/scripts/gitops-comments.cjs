@@ -33,6 +33,15 @@ module.exports = async ({github, context, core}) => {
       return;
     }
     const existing = await comments(number);
+    if (mode === 'preview' && process.env.GITOPS_BASE_SHA) {
+      const {data: base} = await github.rest.git.getRef({owner, repo, ref: `heads/${pull.base.ref}`});
+      if (base.object.sha !== process.env.GITOPS_BASE_SHA) {
+        await upsert(number, existing, previewMarker,
+          `${previewMarker}\n## GitOps PR Preview\n**Preview stale:** the base branch changed during comparison. Rerun this check to refresh the live diff.\n[Workflow](${runUrl})\n`);
+        core.setFailed('Base branch advanced during comparison; rerun the preview');
+        return;
+      }
+    }
     if (mode === 'pending') {
       if (!await upsert(number, existing, previewMarker,
         `${previewMarker}\n## GitOps PR Preview\nComparing changes with the live cluster. Previous output is stale.\n[View workflow](${runUrl})\n`)) return;

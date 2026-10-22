@@ -42,6 +42,8 @@ class ScopeRegistry:
         self.scopes = {}
         self.discovery_attempted = set()
         self.cluster_anchors = {}
+        self.crd_candidates = {}
+        self.crd_reads = set()
 
     def register(self, cluster, group, kind, namespaced, origin):
         key = (cluster, group or "", kind)
@@ -55,6 +57,22 @@ class ScopeRegistry:
             for item in app.get("status", {}).get("resources", []):
                 self.register(cluster_key(app), item.get("group", ""), item["kind"],
                               bool(item.get("namespace")), "live Argo CD inventory")
+                if item.get("kind") == "CustomResourceDefinition":
+                    self.crd_candidates.setdefault(cluster_key(app), []).append((app["metadata"]["name"], item["name"]))
+
+    def read_crd(self, cluster, owner, name):
+        key = (cluster, owner, name)
+        if key in self.crd_reads:
+            return
+        self.crd_reads.add(key)
+        data = json.loads(argo("app", "get-resource", owner, "--group", "apiextensions.k8s.io",
+                               "--kind", "CustomResourceDefinition", "--resource-name", name,
+                               "-o", "json", attempts=3))
+        if isinstance(data, dict) and isinstance(data.get("manifest"), str):
+            data = json.loads(data["manifest"])
+        if not isinstance(data, dict) or data.get("kind") != "CustomResourceDefinition" or data.get("metadata", {}).get("name") != name:
+            raise GitOpsError("Argo returned an invalid live CRD identity")
+        self.crds(cluster, [data], "live CRD", live=True)
 
     def crds(self, cluster, items, origin, *, live=False):
         for item in items:
@@ -98,6 +116,10 @@ class ScopeRegistry:
             # Internal and external API URLs may identify the same cluster. A
             # live CRD UID read through Argo is an independent identity anchor;
             # a proposed manifest can never supply this evidence.
+            if not self.cluster_anchors.get(cluster):
+                candidates = self.crd_candidates.get(cluster, [])
+                if candidates:
+                    self.read_crd(cluster, *candidates[0])
             anchors = self.cluster_anchors.get(cluster, [])
             if not anchors or get(anchors[0][0]).get("metadata", {}).get("uid") != anchors[0][1]:
                 raise GitOpsError(f"Kubernetes discovery destination mismatch: configured {server}, requested {cluster}; configure the matching context")
@@ -115,6 +137,14 @@ class ScopeRegistry:
         key = (cluster, group, kind)
         if key not in self.scopes:
             self.discover(cluster)
+        if key not in self.scopes and group:
+            # Without Kubernetes discovery, read only CRDs in the missing API
+            # group rather than every resource of every CRD-owning Application.
+            for owner, name in self.crd_candidates.get(cluster, []):
+                if name.endswith("." + group):
+                    self.read_crd(cluster, owner, name)
+                    if key in self.scopes:
+                        break
         if key not in self.scopes:
             raise GitOpsError(f"Unknown resource scope for {group or 'core'}/{kind} on {cluster}; provide Kubernetes discovery access or a rendered/live CRD definition")
         return self.scopes[key][0]
@@ -399,11 +429,11 @@ def plan(repo, base, head, repository):
 
 
 class Renderer:
-    def __init__(self, repo, revision, repository, temp, scopes=None):
+    def __init__(self, repo, revision, repository, temp, scopes=None, chart_cache=None):
         self.repo, self.revision, self.repository, self.temp = repo, revision, repository, temp
         self.identities = []
         self.cache = {}
-        self.charts = {}
+        self.charts = chart_cache if chart_cache is not None else {}
         self.scopes = scopes if scopes is not None else ScopeRegistry()
         (temp / "helm-cache").mkdir(exist_ok=True)
         self.helm_flags = ["--repository-config", str(temp / "helm-repositories.yaml"),
@@ -645,6 +675,12 @@ def public_resources(items):
             for field in ("data", "stringData"):
                 if field in item:
                     item[field] = {key: "<redacted>" for key in (item[field] or {})}
+        elif item.get("kind") == "SealedSecret":
+            spec = item.get("spec") or {}
+            if "encryptedData" in spec:
+                spec["encryptedData"] = {key: "<redacted>" for key in (spec["encryptedData"] or {})}
+            if "data" in spec:
+                spec["data"] = "<redacted>"
     return sorted(result, key=resource_key)
 
 
@@ -677,6 +713,8 @@ def manifest_diff(before, after, before_label, after_label):
             if key in old and key in new and original_old[key] != original_new[key]:
                 if kind == "Secret" and any(original_old[key].get(field) != original_new[key].get(field) for field in ("data", "stringData")):
                     sections.append(f"! {identity}: Secret content changed (values redacted).")
+                elif kind == "SealedSecret" and any((original_old[key].get("spec") or {}).get(field) != (original_new[key].get("spec") or {}).get(field) for field in ("encryptedData", "data")):
+                    sections.append(f"! {identity}: SealedSecret content changed (values redacted).")
                 elif kind == "Application" and old[key] == new[key]:
                     sections.append(f"! {identity}: Application inline configuration changed (inputs redacted).")
     return "\n\n".join(sections) + ("\n" if sections else "")
@@ -685,13 +723,19 @@ def manifest_diff(before, after, before_label, after_label):
 def change_counts(before, after):
     old = {resource_key(item): item for item in public_resources(before)}
     new = {resource_key(item): item for item in public_resources(after)}
-    secret_old = {resource_key(item): (item.get("data"), item.get("stringData")) for item in before if item.get("kind") == "Secret"}
-    secret_new = {resource_key(item): (item.get("data"), item.get("stringData")) for item in after if item.get("kind") == "Secret"}
+    def payload(item):
+        if item.get("kind") == "Secret":
+            return item.get("data"), item.get("stringData")
+        if item.get("kind") == "SealedSecret":
+            return (item.get("spec") or {}).get("encryptedData"), (item.get("spec") or {}).get("data")
+        return None
+    secret_old = {resource_key(item): payload(item) for item in before if item.get("kind") in {"Secret", "SealedSecret"}}
+    secret_new = {resource_key(item): payload(item) for item in after if item.get("kind") in {"Secret", "SealedSecret"}}
     return {"added": len(new.keys() - old.keys()), "deleted": len(old.keys() - new.keys()),
             "modified": sum(old[key] != new[key] or secret_old.get(key) != secret_new.get(key) for key in old.keys() & new.keys())}
 
 
-def predict_sync(live_app, proposed_app, live, desired):
+def predict_sync(live_app, proposed_app, live, desired, *, _partial=False):
     """Predict managed resource changes, preserving resources sync will not prune.
 
     Existing resources use Argo's dry-run normalizer rather than treating API
@@ -700,6 +744,14 @@ def predict_sync(live_app, proposed_app, live, desired):
     old = {resource_key(item): copy.deepcopy(item) for item in live}
     new = {resource_key(item): copy.deepcopy(item) for item in desired}
     notices = []
+    blockers = []
+    if _partial and live_app and proposed_app:
+        for field in ("destination", "project", "ignoreDifferences"):
+            if live_app.get("spec", {}).get(field) != proposed_app.get("spec", {}).get(field):
+                raise GitOpsError(f"Application {field} changed; the current live comparison policy cannot validate the proposed policy")
+        annotation = "argocd.argoproj.io/compare-options"
+        if (live_app.get("metadata", {}).get("annotations") or {}).get(annotation) != (proposed_app.get("metadata", {}).get("annotations") or {}).get(annotation):
+            raise GitOpsError("Application comparison options changed; the current live policy cannot validate the proposed policy")
     deleting = proposed_app is None
     prune = deleting or bool((proposed_app.get("spec", {}).get("syncPolicy", {}).get("automated") or {}).get("prune"))
     for key in old.keys() - new.keys():
@@ -713,6 +765,8 @@ def predict_sync(live_app, proposed_app, live, desired):
             _, kind, namespace, name = key
             notices.append(f"Retained {kind} {namespace + '/' if namespace else ''}{name}: {reason}.")
     matched = []
+    global_options = {part.partition("=")[0].strip(): part.partition("=")[2].strip().lower()
+                      for part in (proposed_app or {}).get("spec", {}).get("syncPolicy", {}).get("syncOptions", [])}
     for key in old.keys() & new.keys():
         # Hooks execute as sync tasks, not ordinary persistent workload updates.
         annotations = new[key].get("metadata", {}).get("annotations") or {}
@@ -722,19 +776,45 @@ def predict_sync(live_app, proposed_app, live, desired):
             old.pop(key)
             new.pop(key)
         elif any(change_counts([old[key]], [new[key]]).values()):
-            matched.append(key)
+            options = dict(global_options)
+            options.update({part.partition("=")[0].strip(): part.partition("=")[2].strip().lower()
+                            for part in annotations.get("argocd.argoproj.io/sync-options", "").split(",")})
+            if _partial and (options.get("Replace") == "true" or options.get("Force") == "true"):
+                blockers.append({"identity": list(key), "category": "sync-strategy",
+                                 "message": "Force/Replace requests a replacement-style sync; native update prediction cannot validate that lifecycle"})
+                old.pop(key)
+                new.pop(key)
+            else:
+                matched.append(key)
     if matched:
         if live_app is None or proposed_app is None:
             raise GitOpsError("Existing resources need a live Application for native comparison")
         import gitops_native_diff as native
         try:
-            normalized, predicted = native.predict(live_app, proposed_app,
-                                                    [old[key] for key in matched], [new[key] for key in matched])
+            if _partial:
+                result = native.predict_resources(live_app, proposed_app,
+                                                  [old[key] for key in matched], [new[key] for key in matched])
+                normalized, predicted = result["before"], result["after"]
+                blockers.extend(result["blockers"])
+                for blocker in result["blockers"]:
+                    key = tuple(blocker["identity"])
+                    old.pop(key, None)
+                    new.pop(key, None)
+            else:
+                normalized, predicted = native.predict(live_app, proposed_app,
+                                                       [old[key] for key in matched], [new[key] for key in matched])
         except native.NativeDiffError as exc:
             raise GitOpsError(str(exc)) from exc
         old.update({resource_key(item): item for item in normalized})
         new.update({resource_key(item): item for item in predicted})
+    if _partial:
+        return list(old.values()), list(new.values()), notices, blockers
     return list(old.values()), list(new.values()), notices
+
+
+def preview_sync(live_app, proposed_app, live, desired):
+    """Keep validated resource results when another resource blocks sync."""
+    return predict_sync(live_app, proposed_app, live, desired, _partial=True)
 
 
 def cell(value):

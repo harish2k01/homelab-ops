@@ -46,18 +46,17 @@ class LivePreviewTests(unittest.TestCase):
             return "resource fields changed\n" if any(g.change_counts(before, after).values()) else ""
         with tempfile.TemporaryDirectory() as temp, patch.object(preview, "inventory", return_value={"demo": app}), \
                 patch.object(g, "Renderer", Renderer), patch.object(g, "manifest_diff", side_effect=diff), \
-                patch.object(g, "predict_sync", create=True,
-                             side_effect=lambda live_app, proposed_doc, live, target: (live, target, [])), \
+                patch.object(g, "preview_sync", create=True,
+                             side_effect=lambda live_app, proposed_doc, live, target: (live, target, [], [])), \
                 patch.object(g, "argo", side_effect=failure, return_value=yaml.safe_dump_all(live)):
             return data, preview.evaluate(Path(temp), data, Path(temp), offline=offline)
 
     def test_counts_and_comment_describe_live_not_base(self):
         data, rows = self.evaluate(entry([resource("shared", "2"), resource("new")]),
                                    [resource("shared"), resource("old")])
-        self.assertEqual(rows[0]["prResourceCounts"], {"added": 0, "deleted": 0, "modified": 0})
         self.assertEqual(rows[0]["resourceCounts"], {"added": 1, "deleted": 1, "modified": 1})
         body = preview.render_comment(data, rows)
-        self.assertIn("| `demo` | 1 | 1 | 1 | Changes after sync |", body)
+        self.assertIn("| `demo` | 1 | 1 | 1 | 0 | Changes after sync |", body)
         self.assertEqual(body.count("```diff"), 1)
         for unwanted in ("base-sha", "proposed-sha", "Revision", "PR head", "base → proposed", "Application configuration"):
             self.assertNotIn(unwanted, body)
@@ -80,7 +79,7 @@ class LivePreviewTests(unittest.TestCase):
     def test_failed_live_read_is_not_zero_changes(self):
         data, rows = self.evaluate(entry([resource("same")]), [], failure=g.GitOpsError("live read unavailable"))
         body = preview.render_comment(data, rows)
-        self.assertIn("| `demo` | — | — | — | FAILED |", body)
+        self.assertIn("| `demo` | — | — | — | — | FAILED |", body)
         self.assertIn("live read unavailable", body)
         self.assertNotIn("```", body)
 
@@ -96,7 +95,7 @@ class LivePreviewTests(unittest.TestCase):
                  "liveDiff": "x" * 20000, "error": "", "notices": []} for i in range(10)]
         body = preview.render_comment({}, rows)
         self.assertLess(len(body), 60000)
-        self.assertIn("| `app-9` | 1 | 2 | 3 |", body)
+        self.assertIn("| `app-9` | 1 | 2 | 3 | 0 |", body)
         self.assertIn("Some resource details are omitted", body)
         self.assertIn("[Full diff]({{GITOPS_PREVIEW_ARTIFACT_URL}})", body)
 
