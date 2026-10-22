@@ -122,6 +122,7 @@ httpRoutes:
         sectionName: web
     hostnames:
       - harish2k01.xyz
+      - www.harish2k01.xyz
 resources:
   requests:
     cpu: 10m
