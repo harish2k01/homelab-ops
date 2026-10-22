@@ -369,7 +369,7 @@ providers:
     experimentalChannel: false
     # -- Array of namespaces to watch. If left empty, Traefik watches all namespaces. kubernetesGateway provider requires ClusterRole and as a consequence `rbac.namespaced` is not supported.
     namespaces: []
-    # -- A label selector can be defined to filter on specific GatewayClass objects only.
+    # One controller manages both Gateways through the shared Traefik class.
     labelSelector: ""
     # -- Defines whether to use Native Kubernetes load-balancing mode by default.
     nativeLBByDefault: false
@@ -907,6 +907,21 @@ envFrom: []
 
 # @schema mergeProperties: true
 ports:
+  # External entrypoints are published only on the ClusterIP Service.
+  extweb:
+    port: 9080
+    exposedPort: 80
+    expose:
+      default: false
+      external: true
+    protocol: TCP
+  extsecure:
+    port: 9443
+    exposedPort: 443
+    expose:
+      default: false
+      external: true
+    protocol: TCP
   # @schema additionalProperties: false
   traefik:
     port: 8080
@@ -1140,7 +1155,12 @@ service:
     type: LoadBalancer
   # -- Can be used to create multiple Service.
   # See EXAMPLES.md for more details.
-  additionalServices: {}
+  additionalServices:
+    external:
+      enabled: true
+      single: true
+      spec:
+        type: ClusterIP
 
 autoscaling:  # @schema additionalProperties: false
   # -- Create HorizontalPodAutoscaler object.

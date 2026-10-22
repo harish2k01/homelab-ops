@@ -1,4 +1,5 @@
 __pycache__/
+.github/chart-tests/node_modules/
 *.pyc
 gitops-rendered-output/
 gitops-pr-apply-output/

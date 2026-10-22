@@ -44,17 +44,18 @@ ingress:
   annotations: {}
   host: scrutiny.local
 
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - scrutiny.k8s.harish2k01.xyz
 
 resources: {}

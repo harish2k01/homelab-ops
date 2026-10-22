@@ -42,17 +42,28 @@ hostDevices:
       hostPath: /dev/dri
       mountPath: /dev/dri
 
-httpRoute:
-  enabled: true
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - jellyfin.k8s.harish2k01.xyz
+  external:
+    enabled: true
+    parentRefs:
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: websecure
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: web
+    hostnames:
     - jellyfin.harish2k01.xyz
 
 resources: {}

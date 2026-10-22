@@ -9,9 +9,9 @@ spec:
 
   sources:
     # 🔹 Upstream Helm chart
-    - repoURL: https://harish2k01.github.io/helm-charts
+    - repoURL: https://charts.harish2k01.in
       chart: firefly-iii
-      targetRevision: 0.1.3
+      targetRevision: 0.2.0
       helm:
         releaseName: firefly-iii
         valueFiles:

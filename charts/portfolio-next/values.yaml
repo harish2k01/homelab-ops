@@ -1,23 +1,127 @@
-# Environment overrides for helm-charts/portfolio-next (published chart 0.1.0).
+# Increase for redundancy; the application has no persistent state.
 replicaCount: 2
 image:
   repository: ghcr.io/harish2k01/portfolio-next
+  # Use a published release or immutable content tag; blank uses appVersion.
   tag: v0.4.0
-  # The release workflow fills this with the verified image index digest.
+  # When set, digest takes precedence over tag. A digest change rolls out new pods.
   digest: "sha256:af4aa7f6194c9e3d54550f3423d719c0922a9b30bc52be5e7062e19014cbe54f"
   pullPolicy: IfNotPresent
-httpRoute:
-  enabled: true
-  parentRefs:
-    - name: traefik-gateway
-      namespace: traefik
-      sectionName: websecure
-    - name: traefik-gateway
-      namespace: traefik
-      sectionName: web
-  hostnames:
-    - portfolio.k8s.harish2k01.xyz
-    - harish2k01.xyz
+# Add an existing registry Secret when the GHCR package is private.
+imagePullSecrets: []
+# Override resource naming only when integrating with existing services.
+nameOverride: ""
+fullnameOverride: ""
+# Monitoring annotations and additional workload labels.
+podAnnotations: {}
+podLabels: {}
+# No Kubernetes API access is needed by a static web server.
+automountServiceAccountToken: false
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ ALL ]
+  readOnlyRootFilesystem: true
+service:
+  type: ClusterIP
+  port: 80
+# Use either Ingress or Gateway API for external routing.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: portfolio.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+# Gateway API routing. Requires Gateway API CRDs and a compatible controller.
+# Map keys (main, internal, external, etc.) are names you choose, not access policies.
+# Every enabled entry creates one HTTPRoute named <app-fullname>-<key>.
+httpRoutes:
+  main:
+    # Keep disabled until you provide Gateway references and application hostnames.
+    # Additional entries default to enabled when their enabled field is omitted.
+    enabled: false
+    # Per-route metadata, for example controller-specific annotations.
+    annotations: {}
+    # Attach this route to one or more Gateways/listeners. The Gateway must allow
+    # routes from this app's namespace. Omit namespace for a same-namespace Gateway;
+    # omit sectionName to target compatible listeners on that Gateway.
+    parentRefs: []
+    #  - name: internal-gateway
+    #    namespace: ingress
+    #    sectionName: https
+    #  - name: second-internal-gateway
+    #    namespace: ingress
+    #    sectionName: https
+    # Requests can match ANY hostname below, on ANY compatible parent above.
+    # These lists do not pair hostnames with individual Gateways by position.
+    hostnames: []
+    #  - app.internal.example.com
+    #  - app-alias.internal.example.com
+    # Match request paths/headers/methods and optionally apply Gateway API filters.
+    # Rules default to PathPrefix / when omitted. Backend references are generated
+    # from this chart's application Service and HTTP port, not supplied here.
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        # filters:
+        #   - type: RequestHeaderModifier
+        #     requestHeaderModifier:
+        #       set:
+        #         - name: X-Route
+        #           value: internal
+        # Use a separate entry when public hostnames should attach to another Gateway.
+        # external:
+        #   enabled: true
+        #   annotations: {}
+        #   parentRefs:
+        #     - name: external-gateway
+        #       namespace: ingress
+        #       sectionName: https
+        #   hostnames:
+        #     - app.example.com
+        #     - app-alias.example.com
+        #   rules:
+        #     - matches:
+        #         - path:
+        #             type: PathPrefix
+        #             value: /
+
+        # NGINX is small; tune these after measuring traffic.
+  internal:
+    enabled: true
+    parentRefs:
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: websecure
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: web
+    hostnames:
+      - portfolio.k8s.harish2k01.xyz
+  external:
+    enabled: true
+    parentRefs:
+      - name: traefik-external-gateway
+        namespace: traefik
+        sectionName: websecure
+      - name: traefik-external-gateway
+        namespace: traefik
+        sectionName: web
+    hostnames:
+      - harish2k01.xyz
 resources:
   requests:
     cpu: 10m
@@ -25,3 +129,16 @@ resources:
   limits:
     cpu: 250m
     memory: 128Mi
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+# Optional scheduling constraints for dedicated nodes or topology placement.
+nodeSelector: {}
+tolerations: []
+affinity: {}

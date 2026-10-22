@@ -1,0 +1,8 @@
+Portfolio is served on port {{ .Values.service.port }} by {{ include "portfolio-next.fullname" . }}.
+
+For local access:
+  kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "portfolio-next.fullname" . }} 8080:{{ .Values.service.port }}
+
+Open http://localhost:8080. Health probes use /healthz.
+Pin image.digest for reproducible deployment and rollback. Blog refreshes change
+the digest without changing the code release. SITE_URL is a build-time setting.

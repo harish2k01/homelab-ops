@@ -5,3 +5,4 @@ resources:
   - traefik-gateway.yaml
   - traefik-route-dashboard.yaml
   - traefik-gateway-class.yaml
+  - traefik-external-gateway.yaml

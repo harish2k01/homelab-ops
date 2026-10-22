@@ -1,0 +1,48 @@
+{{- if hasKey .Values "httpRoute" -}}
+{{- fail "httpRoute has been removed; migrate to httpRoutes.<name> (see chart README)" -}}
+{{- end -}}
+{{- $root := . -}}
+{{- $fullName := include "portfolio-tracker.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- $names := dict -}}
+{{- range $key, $route := .Values.httpRoutes }}
+{{- if or (not (hasKey $route "enabled")) $route.enabled }}
+{{- $parentRefs := required (printf "httpRoutes.%s.parentRefs must identify a Gateway" $key) $route.parentRefs -}}
+{{- $hostnames := required (printf "httpRoutes.%s.hostnames must identify the application" $key) $route.hostnames -}}
+{{- $name := printf "%s-%s" ($fullName | trunc (int (sub 62 (len $key))) | trimSuffix "-") $key -}}
+{{- if hasKey $names $name -}}
+{{- fail (printf "HTTPRoute resource name collision: %s" $name) -}}
+{{- end -}}
+{{- $_ := set $names $name true -}}
+{{- with $root }}
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "portfolio-tracker.labels" . | nindent 4 }}
+  {{- with $route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- toYaml $parentRefs | nindent 4 }}
+  hostnames:
+    {{- toYaml $hostnames | nindent 4 }}
+  rules:
+    {{- $rules := list (dict "matches" (list (dict "path" (dict "type" "PathPrefix" "value" "/")))) -}}
+    {{- if hasKey $route "rules" -}}
+    {{- $rules = $route.rules -}}
+    {{- end -}}
+    {{- range $rules }}
+    {{- $rule := deepCopy . -}}
+    {{- $_ := set $rule "backendRefs" (list (dict "name" $fullName "port" ($svcPort | int) "weight" 1)) -}}
+    {{- toYaml (list $rule) | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

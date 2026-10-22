@@ -1,0 +1,114 @@
+{{- if .Values.database.postgresql.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "portfolio-tracker.fullname" . }}-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "portfolio-tracker.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "portfolio-tracker.fullname" . }}-db
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "portfolio-tracker.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "portfolio-tracker.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      {{- with .Values.database.postgresql.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgresql
+          image: "{{ .Values.database.postgresql.image.repository }}:{{ .Values.database.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.database.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: {{ .Values.database.postgresql.service.port }}
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.database.postgresql.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.database.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-db" (include "portfolio-tracker.fullname" .)) .Values.database.postgresql.auth.existingSecret }}
+                  key: {{ .Values.database.postgresql.auth.passwordKey }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          {{- if .Values.database.postgresql.healthcheck.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgresql.auth.username }} -d {{ .Values.database.postgresql.auth.database }}
+            initialDelaySeconds: 60
+            periodSeconds: {{ .Values.database.postgresql.healthcheck.interval | replace "s" "" | int }}
+            timeoutSeconds: {{ .Values.database.postgresql.healthcheck.timeout | replace "s" "" | int }}
+            failureThreshold: {{ .Values.database.postgresql.healthcheck.retries }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.database.postgresql.auth.username }} -d {{ .Values.database.postgresql.auth.database }}
+            initialDelaySeconds: 10
+            periodSeconds: {{ .Values.database.postgresql.healthcheck.interval | replace "s" "" | int }}
+            timeoutSeconds: {{ .Values.database.postgresql.healthcheck.timeout | replace "s" "" | int }}
+            failureThreshold: {{ .Values.database.postgresql.healthcheck.retries }}
+          {{- end }}
+          {{- with .Values.database.postgresql.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      {{- if .Values.database.postgresql.persistence.existingClaim }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.database.postgresql.persistence.existingClaim }}
+      {{- else if not .Values.database.postgresql.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      {{- with .Values.database.postgresql.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.database.postgresql.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.database.postgresql.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if and .Values.database.postgresql.persistence.enabled (not .Values.database.postgresql.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "portfolio-tracker.claimTemplateLabels" (dict "root" . "labels" .Values.database.postgresql.persistence.claimTemplateLabels) | nindent 10 }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.database.postgresql.persistence.accessModes | nindent 10 }}
+        {{- if .Values.database.postgresql.persistence.storageClassName }}
+        storageClassName: {{ .Values.database.postgresql.persistence.storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.postgresql.persistence.size }}
+  {{- end }}
+{{- end }}

@@ -16,17 +16,28 @@ service:
 ingress:
   enabled: false
 
-httpRoute:
-  enabled: true
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - umami.k8s.harish2k01.xyz
+  external:
+    enabled: true
+    parentRefs:
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: websecure
+    - name: traefik-external-gateway
+      namespace: traefik
+      sectionName: web
+    hostnames:
     - umami.harish2k01.xyz
 
 database:

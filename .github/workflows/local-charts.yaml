@@ -1,0 +1,35 @@
+name: Validate local personal charts
+on:
+  pull_request:
+    paths:
+      - charts/portfolio-next/**
+      - charts/portfolio-tracker/**
+      - .github/chart-tests/**
+      - .github/workflows/local-charts.yaml
+  push:
+    branches: [main]
+    paths:
+      - charts/portfolio-next/**
+      - charts/portfolio-tracker/**
+      - .github/chart-tests/**
+      - .github/workflows/local-charts.yaml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'homelab-ops-runner' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci --ignore-scripts --prefix .github/chart-tests
+      - name: Lint and render local charts
+        run: |
+          for chart in charts/portfolio-next charts/portfolio-tracker; do
+            helm lint "$chart"
+            helm template validation "$chart" --namespace validation > /dev/null
+          done
+      - run: node --test .github/chart-tests/*.test.mjs

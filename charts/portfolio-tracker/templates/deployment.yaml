@@ -1,0 +1,126 @@
+{{- $builtinPostgreSQL := .Values.database.postgresql.enabled }}
+{{- $externalDatabaseEnabled := .Values.database.external.enabled }}
+{{- if and $builtinPostgreSQL $externalDatabaseEnabled }}
+{{- fail "Enable only one database section: database.postgresql or database.external" }}
+{{- end }}
+{{- if not (or $builtinPostgreSQL $externalDatabaseEnabled) }}
+{{- fail "Portfolio Tracker requires PostgreSQL. Enable database.postgresql or database.external." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "portfolio-tracker.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "portfolio-tracker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "portfolio-tracker.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      annotations:
+        checksum/portfolio-tracker-secrets: {{ toJson .Values.portfolioTracker.secrets.inline | sha256sum }}
+        checksum/portfolio-tracker-database: {{ toJson .Values.database | sha256sum }}
+        portfolio-tracker/rollout-token: {{ .Values.portfolioTracker.secrets.rolloutToken | quote }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "portfolio-tracker.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: application
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $builtinPostgreSQL }}
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z {{ include "portfolio-tracker.fullname" . }}-db {{ .Values.database.postgresql.service.port }}; do echo waiting for PostgreSQL; sleep 2; done;
+      {{- end }}
+      containers:
+        - name: portfolio-tracker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.portfolioTracker.env }}
+            {{- if not (has $key (list "DATABASE_URL" "DATABASE_PASSWORD" "NEXTAUTH_SECRET" "SMTP_USER" "SMTP_PASS")) }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if $builtinPostgreSQL }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-db" (include "portfolio-tracker.fullname" .)) .Values.database.postgresql.auth.existingSecret }}
+                  key: {{ .Values.database.postgresql.auth.passwordKey }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.database.postgresql.auth.username }}:$(DATABASE_PASSWORD)@{{ include "portfolio-tracker.fullname" . }}-db:{{ .Values.database.postgresql.service.port }}/{{ .Values.database.postgresql.auth.database }}?schema=public"
+            {{- else if $externalDatabaseEnabled }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-db-external" (include "portfolio-tracker.fullname" .)) .Values.database.external.existingSecret }}
+                  key: {{ .Values.database.external.databaseUrlKey }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ default (include "portfolio-tracker.fullname" .) .Values.portfolioTracker.secrets.existingSecret }}
+          {{- with .Values.portfolioTracker.envFrom }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.portfolioTracker.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.portfolioTracker.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.portfolioTracker.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

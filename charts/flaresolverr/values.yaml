@@ -8,8 +8,9 @@ persistence:
   config:
     enabled: false
 
-httpRoute:
-  enabled: false
+httpRoutes:
+  internal:
+    enabled: false
 
 resources: {}
 envFrom: []

@@ -26,23 +26,24 @@ ingress:
   hosts: []
   tls: []
 
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
+httpRoutes:
+  internal:
+    enabled: true
+    annotations: {}
+    parentRefs:
     - name: traefik-gateway
       namespace: traefik
       sectionName: websecure
     - name: traefik-gateway
       namespace: traefik
       sectionName: web
-  hostnames:
+    hostnames:
     - uptimekuma.k8s.harish2k01.xyz
-  rules:
+    rules:
     - matches:
-        - path:
-            type: PathPrefix
-            value: /
+      - path:
+          type: PathPrefix
+          value: /
 
 # Database configuration.
 # Uptime Kuma uses SQLite by default. Enable either mariadb or external to use MariaDB.

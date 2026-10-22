@@ -24,6 +24,10 @@ Argo CD syncs. Existing Applications follow their Argo CD sync policies.
 
 ## Documentation
 
+The [gateway configuration](manifests/traefik/README.md)
+describes the Cloudflare Tunnel origin, internal/public route split, and initial
+migration sequence.
+
 The [repository wiki](https://github.com/harish2k01/homelab-ops/wiki) contains the
 architecture, application configuration, integrations, deployment model, and
 troubleshooting reference.
@@ -39,3 +43,14 @@ troubleshooting reference.
 
 This repository describes the homelab's own environment. The wiki explains the
 configuration and dependencies involved in adapting it to another cluster.
+
+## Personal application charts
+
+`charts/portfolio-next` and `charts/portfolio-tracker` are local charts for the
+personal portfolio and hobby tracker. Their Argo CD Applications read these paths
+directly. They are not published through the public chart catalog or Helm OCI
+repository. The app container images remain in their existing GHCR repositories.
+
+`.github/workflows/local-charts.yaml` checks these charts and their app-specific
+tests. The reusable image updater already commits both `values.yaml` and local
+`Chart.yaml` image metadata when called by application release workflows.
