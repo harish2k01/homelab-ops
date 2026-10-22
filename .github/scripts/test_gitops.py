@@ -331,7 +331,7 @@ class DynamicScopes(unittest.TestCase):
         def argo(*args, **kwargs):
             self.assertEqual(args[:3], ("app", "get-resource", "provider"))
             return json.dumps(crd())
-        with tempfile.TemporaryDirectory() as directory, patch.object(preview, "inventory", return_value={"provider": provider}), patch.object(g, "argo", side_effect=argo), patch.object(g.Renderer, "render", return_value=[custom_resource()]):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"GITOPS_DISCOVERY": "false"}), patch.object(preview, "inventory", return_value={"provider": provider}), patch.object(g, "argo", side_effect=argo), patch.object(g.Renderer, "render", return_value=[custom_resource()]):
             rows = preview.evaluate(Path(directory), plan_data([entry("consumer")]), Path(directory))
         self.assertNotEqual(rows[0]["result"], "FAILED", rows)
 
