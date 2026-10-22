@@ -5,6 +5,7 @@ const publish = require('./gitops-comments.cjs');
 function fixture(mode = 'pending', sha = 'head') {
   process.env.GITOPS_COMMENT_MODE = mode;
   process.env.GITOPS_HEAD_SHA = 'head';
+  delete process.env.GITOPS_BASE_SHA;
   const writes = [];
   const comments = [
     {id: 1, user: {login: 'human'}, body: '<!-- friday-pa:argocd-diff --> human text'},
@@ -13,7 +14,7 @@ function fixture(mode = 'pending', sha = 'head') {
     {id: 4, user: {login: 'friday-pa[bot]'}, body: '<!-- friday-pa:argocd-apply --> approval requested'},
   ];
   const github = {rest: {
-    pulls: {get: async () => ({data: {head: {sha}, state: 'open'}})},
+    pulls: {get: async () => ({data: {head: {sha}, base: {ref: 'main'}, state: 'open'}})},
     issues: {listComments: 'comments',
       updateComment: async args => writes.push({type: 'update', ...args}),
       deleteComment: async args => writes.push({type: 'delete', ...args}),
@@ -70,5 +71,22 @@ test('unsupported modes cannot publish deployment results', async () => {
     if (mode === undefined) delete process.env.GITOPS_COMMENT_MODE;
     await assert.rejects(publish(args), /Only preview comment modes/);
     assert.equal(writes.length, 0);
+  }
+});
+
+test('a base branch move cannot publish an obsolete comparison', async () => {
+  const {writes, args} = fixture('preview');
+  process.env.GITOPS_BASE_SHA = 'compared-base';
+  args.github.rest.git = {getRef: async () => ({data: {object: {sha: 'new-base'}}})};
+  let failure;
+  args.core.setFailed = message => { failure = message; };
+  try {
+    await publish(args);
+    assert.match(failure, /Base branch advanced/);
+    assert.equal(writes.length, 1);
+    assert.match(writes[0].body, /Preview stale/);
+    assert.doesNotMatch(writes[0].body, /Changes after sync/);
+  } finally {
+    delete process.env.GITOPS_BASE_SHA;
   }
 });

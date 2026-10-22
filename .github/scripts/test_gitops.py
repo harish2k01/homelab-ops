@@ -329,7 +329,8 @@ class DynamicScopes(unittest.TestCase):
         provider = app("provider")
         provider["status"] = {"resources": [{"group": "apiextensions.k8s.io", "kind": "CustomResourceDefinition", "name": "widgets.example.io"}]}
         def argo(*args, **kwargs):
-            return yaml.safe_dump(crd()) if args[2] == "provider" else ""
+            self.assertEqual(args[:3], ("app", "get-resource", "provider"))
+            return json.dumps(crd())
         with tempfile.TemporaryDirectory() as directory, patch.object(preview, "inventory", return_value={"provider": provider}), patch.object(g, "argo", side_effect=argo), patch.object(g.Renderer, "render", return_value=[custom_resource()]):
             rows = preview.evaluate(Path(directory), plan_data([entry("consumer")]), Path(directory))
         self.assertNotEqual(rows[0]["result"], "FAILED", rows)

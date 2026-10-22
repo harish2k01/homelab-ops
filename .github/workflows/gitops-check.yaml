@@ -8,6 +8,7 @@ on:
       - '.github/scripts/install-argocd.sh'
       - '.github/scripts/install-actionlint.sh'
       - '.github/scripts/install-dyff.sh'
+      - '.github/scripts/gitops-download.sh'
       - '.github/workflows/gitops*'
       - '.github/actionlint.yaml'
       - 'gitops-policy.yaml'
@@ -20,6 +21,7 @@ on:
       - '.github/scripts/install-argocd.sh'
       - '.github/scripts/install-actionlint.sh'
       - '.github/scripts/install-dyff.sh'
+      - '.github/scripts/gitops-download.sh'
       - '.github/workflows/gitops*'
       - '.github/actionlint.yaml'
       - 'gitops-policy.yaml'
@@ -36,15 +38,45 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: .github/scripts/requirements-gitops.txt
       - run: python -m pip install --disable-pip-version-check -r .github/scripts/requirements-gitops.txt
+      - name: Restore pinned dyff
+        continue-on-error: true
+        id: dyff-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/gitops-tool-cache/dyff
+          key: ${{ runner.os }}-${{ runner.arch }}-dyff-v1.12.0-${{ hashFiles('.github/scripts/install-dyff.sh', '.github/scripts/gitops-download.sh') }}
       - name: Install dyff
         run: bash .github/scripts/install-dyff.sh
+      - name: Save verified dyff
+        continue-on-error: true
+        if: steps.dyff-cache.outputs.cache-primary-key != '' && steps.dyff-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/gitops-tool-cache/dyff
+          key: ${{ steps.dyff-cache.outputs.cache-primary-key }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - run: python -m unittest discover -s .github/scripts -p 'test_gitops*.py' -v
       - run: node --test .github/scripts/gitops-comments.test.cjs
+      - name: Restore pinned actionlint
+        continue-on-error: true
+        id: actionlint-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/gitops-tool-cache/actionlint
+          key: ${{ runner.os }}-${{ runner.arch }}-actionlint-v1.7.12-${{ hashFiles('.github/scripts/install-actionlint.sh', '.github/scripts/gitops-download.sh') }}
       - name: Install actionlint
         run: bash .github/scripts/install-actionlint.sh
+      - name: Save verified actionlint
+        continue-on-error: true
+        if: steps.actionlint-cache.outputs.cache-primary-key != '' && steps.actionlint-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/gitops-tool-cache/actionlint
+          key: ${{ steps.actionlint-cache.outputs.cache-primary-key }}
       - name: Lint workflows
         run: actionlint
