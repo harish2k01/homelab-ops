@@ -120,6 +120,7 @@ httpRoutes:
       sectionName: web
     hostnames:
     - harish2k01.in
+    - www.harish2k01.in
 
 resources:
   requests:
