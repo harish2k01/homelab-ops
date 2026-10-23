@@ -27,7 +27,7 @@ podSecurityContext:
 securityContext:
   allowPrivilegeEscalation: false
   capabilities:
-    drop: [ ALL ]
+    drop: [ALL]
   readOnlyRootFilesystem: true
 service:
   type: ClusterIP
@@ -98,8 +98,8 @@ httpRoutes:
         #         - path:
         #             type: PathPrefix
         #             value: /
+  # NGINX is small; tune these after measuring traffic.
 
-        # NGINX is small; tune these after measuring traffic.
   internal:
     enabled: true
     parentRefs:
