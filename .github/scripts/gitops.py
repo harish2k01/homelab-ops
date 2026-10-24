@@ -157,9 +157,8 @@ class ScopeRegistry:
             group, kind, current_namespace, _ = resource_key(item)
             if self.namespaced(cluster, group, kind):
                 item["metadata"]["namespace"] = current_namespace or namespace
-            elif current_namespace:
-                raise GitOpsError(f"Cluster-scoped resource {group or 'core'}/{kind} cannot declare namespace {current_namespace}")
             else:
+                # Match Argo CD DeduplicateTargetObjects after authoritative scope discovery.
                 item["metadata"].pop("namespace", None)
         # Argo CD multi-source precedence is last source wins, across API versions.
         return list({resource_key(item): item for item in result}.values())

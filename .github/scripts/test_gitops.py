@@ -420,13 +420,27 @@ class DynamicScopes(unittest.TestCase):
             with self.assertRaisesRegex(g.GitOpsError, "destination mismatch"):
                 g.ScopeRegistry().namespaced(g.cluster_key(app()), "example.io", "Widget")
 
-    def test_list_unwraps_crds_and_cluster_namespace_is_rejected(self):
+    def test_list_unwraps_crds_and_cluster_namespace_matches_argocd(self):
         registry = g.ScopeRegistry()
         items = g.resources(yaml.safe_dump({"apiVersion": "v1", "kind": "List", "items": [crd(), custom_resource()]}))
         registry.crds(g.cluster_key(app()), items, "proposed")
         items[1]["metadata"]["namespace"] = "invalid"
-        with self.assertRaisesRegex(g.GitOpsError, "Cluster-scoped resource"):
-            registry.normalize(items, app())
+        normalized = registry.normalize(items, app())
+        self.assertNotIn("namespace", normalized[1]["metadata"])
+        self.assertEqual(items[1]["metadata"]["namespace"], "invalid")
+
+    def test_helm_cluster_role_namespace_is_normalized_before_deduplication(self):
+        registry = g.ScopeRegistry()
+        registry.register(g.cluster_key(app()), "rbac.authorization.k8s.io", "ClusterRole", False, "API discovery")
+        first = {"apiVersion": "rbac.authorization.k8s.io/v1", "kind": "ClusterRole",
+                 "metadata": {"name": "runner", "namespace": "monitoring"}, "rules": []}
+        second = copy.deepcopy(first)
+        second["metadata"].pop("namespace")
+        second["rules"] = [{"apiGroups": [""], "resources": ["pods"], "verbs": ["get"]}]
+        normalized = registry.normalize([first, second], app())
+        self.assertEqual(len(normalized), 1)
+        self.assertEqual(normalized[0]["rules"], second["rules"])
+        self.assertNotIn("namespace", normalized[0]["metadata"])
 
 
 
