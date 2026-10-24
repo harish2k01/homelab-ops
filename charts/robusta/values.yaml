@@ -29,6 +29,11 @@ sinksConfig:
   - discord_sink:
       name: homelab_discord
       url: "{{ env.DISCORD_WEBHOOK_URL }}"
+  - webhook_sink:
+      name: olympus
+      url: http://olympus-backend.olympus.svc:8080/hooks/Robusta
+      format: json
+      authorization: "{{ env.OLYMPUS_AUTHORIZATION }}"
 
 # global parameters
 clusterName: HLAB
@@ -758,6 +763,11 @@ runner:
       secretKeyRef:
         name: alertmanager-discord
         key: discord-webhook-url
+  - name: OLYMPUS_AUTHORIZATION
+    valueFrom:
+      secretKeyRef:
+        name: olympus-notifications
+        key: authorization
   additional_env_froms: []
   customCRD: []
   priorityClassName: ""
