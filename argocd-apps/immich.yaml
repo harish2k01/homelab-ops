@@ -10,7 +10,7 @@ spec:
   sources:
     # 🔹 Upstream Helm chart
     - repoURL: oci://ghcr.io/immich-app/immich-charts/immich
-      targetRevision: 0.13.1
+      targetRevision: 0.13.4
       path: .
       helm:
         releaseName: immich
