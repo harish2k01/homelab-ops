@@ -7,32 +7,36 @@ revisionHistoryLimit: 3
 strategy:
   type: Recreate
 
-# First start on a new volume can take over a minute; don't restart it while it initialises.
+# First start on a new volume can take over a minute, and parsing a very large package
+# document blocks Verdaccio's event loop for seconds at a time: only restart it after two
+# minutes of no response.
 livenessProbe:
   initialDelaySeconds: 60
   periodSeconds: 20
-  timeoutSeconds: 3
-  failureThreshold: 3
+  timeoutSeconds: 10
+  failureThreshold: 6
 readinessProbe:
   initialDelaySeconds: 10
-  timeoutSeconds: 3
+  timeoutSeconds: 10
+  failureThreshold: 6
 
-# Several runners installing at once (especially into an empty cache) parse large package
-# documents concurrently; 512Mi was OOM-killed mid-install. Keep the V8 heap below the limit
-# so Node collects garbage instead of the kernel killing the pod.
+# Verdaccio keeps and parses full npm package documents, and some are huge (@prisma/client is
+# ~70MB, several @prisma/@typescript-eslint/typescript documents are 12-35MB). Several runners
+# installing at once parse them concurrently: 512Mi and then 2Gi were OOM-killed. Keep the V8
+# heap below the limit so Node collects garbage instead of the kernel killing the pod.
 resources:
   requests:
     cpu: 100m
-    memory: 512Mi
+    memory: 1Gi
   limits:
     cpu: "2"
-    memory: 2Gi
+    memory: 4Gi
 
 extraEnvVars:
   - name: VERDACCIO_PORT
     value: "4873"
   - name: NODE_OPTIONS
-    value: --max-old-space-size=1536
+    value: --max-old-space-size=3072
 
 podSecurityContext:
   fsGroup: 101
