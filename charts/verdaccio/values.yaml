@@ -17,13 +17,22 @@ readinessProbe:
   initialDelaySeconds: 10
   timeoutSeconds: 3
 
+# Several runners installing at once (especially into an empty cache) parse large package
+# documents concurrently; 512Mi was OOM-killed mid-install. Keep the V8 heap below the limit
+# so Node collects garbage instead of the kernel killing the pod.
 resources:
   requests:
-    cpu: 50m
-    memory: 128Mi
-  limits:
-    cpu: "1"
+    cpu: 100m
     memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+extraEnvVars:
+  - name: VERDACCIO_PORT
+    value: "4873"
+  - name: NODE_OPTIONS
+    value: --max-old-space-size=1536
 
 podSecurityContext:
   fsGroup: 101
