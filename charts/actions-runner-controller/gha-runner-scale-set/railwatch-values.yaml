@@ -61,10 +61,12 @@ template:
           # In-cluster npm cache (Verdaccio); npm rewrites lockfile registry.npmjs.org URLs to it.
           - name: NPM_CONFIG_REGISTRY
             value: http://verdaccio.arc-systems.svc.cluster.local:4873/
+        # Requests reserve real capacity so the scheduler spreads parallel jobs across nodes;
+        # at 500m several runners stacked on one node and unit tests ran ~300x slower and timed out.
         resources:
           requests:
-            cpu: "500m"
-            memory: "1Gi"
+            cpu: "1500m"
+            memory: "2Gi"
           limits:
             cpu: "3"
             memory: "4Gi"
