@@ -1,0 +1,126 @@
+{{- $fullName := include "railwatch.fullname" . -}}
+{{- if .Values.migrations.enabled }}
+# Recreated on every sync; prisma migrate deploy is a no-op when the schema is current.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullName }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "worker") | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "railwatch.labels" (list . "worker") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "railwatch.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "railwatch.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+          env:
+            - name: HOME
+              value: /tmp
+          envFrom:
+            - secretRef:
+                name: {{ include "railwatch.secretName" . }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- include "railwatch.scheduling" . | nindent 6 }}
+---
+{{- end }}
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullName }}-postgres-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "worker") | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  timeZone: {{ .Values.backup.timeZone }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            {{- include "railwatch.selectorLabels" (list . "worker") | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            fsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: {{ .Values.postgres.image }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -ec
+                - >-
+                  export PGPASSWORD="$POSTGRES_PASSWORD";
+                  output="/backups/railwatch-$(date -u +%Y%m%dT%H%M%SZ).dump";
+                  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "$output";
+                  pg_restore --list "$output" >/dev/null;
+                  find /backups -maxdepth 1 -type f -name "railwatch-*.dump" -mtime +{{ .Values.backup.retentionDays }} -delete;
+                  echo "RailWatch backup verified"
+              env:
+                - name: PGHOST
+                  value: {{ $fullName }}-postgres
+              envFrom:
+                - secretRef:
+                    name: {{ include "railwatch.secretName" . }}
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ required "backup.existingClaim must name the backup claim" .Values.backup.existingClaim }}
+            - name: tmp
+              emptyDir: {}
+{{- end }}

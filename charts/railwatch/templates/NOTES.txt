@@ -1,0 +1,7 @@
+RailWatch {{ .Chart.AppVersion }} is deployed to {{ .Release.Namespace }}.
+
+Open {{ .Values.appUrl }}
+
+Inspect logs:
+  kubectl -n {{ .Release.Namespace }} logs deployment/{{ include "railwatch.fullname" . }}-backend
+  kubectl -n {{ .Release.Namespace }} logs deployment/{{ include "railwatch.fullname" . }}-frontend

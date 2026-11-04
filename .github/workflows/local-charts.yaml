@@ -4,6 +4,7 @@ on:
     paths:
       - charts/portfolio-next/**
       - charts/portfolio-tracker/**
+      - charts/railwatch/**
       - .github/chart-tests/**
       - .github/workflows/local-charts.yaml
   push:
@@ -11,6 +12,7 @@ on:
     paths:
       - charts/portfolio-next/**
       - charts/portfolio-tracker/**
+      - charts/railwatch/**
       - .github/chart-tests/**
       - .github/workflows/local-charts.yaml
 permissions:
@@ -28,7 +30,7 @@ jobs:
       - run: npm ci --ignore-scripts --prefix .github/chart-tests
       - name: Lint and render local charts
         run: |
-          for chart in charts/portfolio-next charts/portfolio-tracker; do
+          for chart in charts/portfolio-next charts/portfolio-tracker charts/railwatch; do
             helm lint "$chart"
             helm template validation "$chart" --namespace validation > /dev/null
           done

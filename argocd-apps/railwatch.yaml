@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: railwatch
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: railwatch
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+  revisionHistoryLimit: 3
+  source:
+    repoURL: https://github.com/harish2k01/homelab-ops
+    targetRevision: main
+    path: charts/railwatch
+    helm:
+      releaseName: railwatch
