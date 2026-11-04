@@ -1,0 +1,74 @@
+# Values for the upstream verdaccio/verdaccio chart, used by argocd-apps/verdaccio.yaml as an
+# in-cluster npm cache for self-hosted CI runners in arc-systems. The cache is disposable: losing the
+# volume only means the next run downloads packages from npmjs again.
+revisionHistoryLimit: 3
+
+# One pod owns the RWO volume, so replace it rather than surge.
+strategy:
+  type: Recreate
+
+# First start on a new volume can take over a minute; don't restart it while it initialises.
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 20
+  timeoutSeconds: 3
+  failureThreshold: 3
+readinessProbe:
+  initialDelaySeconds: 10
+  timeoutSeconds: 3
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+podSecurityContext:
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  runAsUser: 10001
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+persistence:
+  enabled: true
+  storageClass: longhorn
+  size: 8Gi
+
+# Read-only proxy of registry.npmjs.org: nobody can log in or publish.
+configMap: |
+  storage: /verdaccio/storage/data
+  auth:
+    htpasswd:
+      file: /verdaccio/storage/htpasswd
+      max_users: -1
+  uplinks:
+    npmjs:
+      url: https://registry.npmjs.org/
+      # Reuse package metadata for 10 minutes before asking npmjs again.
+      maxage: 10m
+      timeout: 60s
+  packages:
+    "**":
+      access: $all
+      publish: $nobody
+      unpublish: $nobody
+      proxy: npmjs
+  # Forward `npm audit` requests to npmjs for runners that use this registry.
+  middlewares:
+    audit:
+      enabled: true
+  server:
+    keepAliveTimeout: 60
+  web:
+    enable: false
+  log:
+    type: stdout
+    format: json
+    level: warn

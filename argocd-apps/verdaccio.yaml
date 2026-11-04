@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: verdaccio
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # npm cache for the self-hosted CI runners: upstream Verdaccio chart
+    - repoURL: https://charts.verdaccio.org
+      chart: verdaccio
+      targetRevision: 7.2.0
+      helm:
+        releaseName: verdaccio
+        valueFiles:
+          - $values/charts/verdaccio/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: manifests/verdaccio
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-systems
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3
