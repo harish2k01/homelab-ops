@@ -1,0 +1,26 @@
+# Only pods in this namespace (the ARC runners) may reach the cache; it may reach only
+# DNS and HTTPS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: verdaccio
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: verdaccio
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - port: 4873
+          protocol: TCP
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
