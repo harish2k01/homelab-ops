@@ -1,0 +1,21 @@
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "railwatch.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "app") | nindent 4 }}
+automountServiceAccountToken: false
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "railwatch.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "app") | nindent 4 }}
+data:
+  APP_URL: {{ required "appUrl is required" .Values.appUrl | quote }}
+  NODE_ENV: production

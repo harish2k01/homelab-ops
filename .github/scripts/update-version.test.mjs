@@ -42,7 +42,7 @@ test('same-version blog refresh changes only digest; identical updates are byte-
 
 
 test('personal local charts update image identity and appVersion without changing chart version', () => {
-  for (const app of ['portfolio-next', 'portfolio-tracker']) {
+  for (const app of ['portfolio-next', 'portfolio-tracker', 'railwatch']) {
     const root = mkdtempSync(join(tmpdir(), 'local-chart-image-'));
     try {
       const folder = join(root, 'charts', app);

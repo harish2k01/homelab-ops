@@ -1,0 +1,15 @@
+apiVersion: v2
+name: railwatch
+description: RailWatch train travel planner with a Next.js frontend, Fastify backend and PostgreSQL
+type: application
+version: 0.1.0
+appVersion: "v2.21.8"
+home: https://github.com/harish2k01/railwatch
+sources:
+  - https://github.com/harish2k01/railwatch
+keywords:
+  - railwatch
+  - travel
+  - reminders
+maintainers:
+  - name: harish2k01

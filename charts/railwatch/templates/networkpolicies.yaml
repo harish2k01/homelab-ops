@@ -1,0 +1,130 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $fullName := include "railwatch.fullname" . -}}
+{{- $dns := list (dict "port" 53 "protocol" "UDP") (dict "port" 53 "protocol" "TCP") -}}
+# Everything in the namespace is denied unless a policy below allows it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullName }}-default-deny
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "app") | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# Frontend: reached only from the Gateway controller; talks only to the backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullName }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "railwatch.selectorLabels" (list . "frontend") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.gatewayNamespace }}
+      ports:
+        - port: {{ .Values.frontend.port }}
+          protocol: TCP
+  egress:
+    - ports: {{ toJson $dns }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "backend") | nindent 14 }}
+      ports:
+        - port: {{ .Values.backend.port }}
+          protocol: TCP
+---
+# Backend: reached only from the frontend; talks to PostgreSQL and outgoing providers.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullName }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "backend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "railwatch.selectorLabels" (list . "backend") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "frontend") | nindent 14 }}
+      ports:
+        - port: {{ .Values.backend.port }}
+          protocol: TCP
+  egress:
+    - ports: {{ toJson $dns }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "database") | nindent 14 }}
+      ports:
+        - port: 5432
+          protocol: TCP
+    - ports:
+        {{- range .Values.networkPolicy.backendEgressPorts }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+---
+# Database: reached only by the backend and by migration/backup jobs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullName }}-database
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "database") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "railwatch.selectorLabels" (list . "database") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "backend") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "worker") | nindent 14 }}
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+# Migration and backup jobs: DNS and PostgreSQL only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullName }}-workers
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list . "worker") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "railwatch.selectorLabels" (list . "worker") | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    - ports: {{ toJson $dns }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "railwatch.selectorLabels" (list . "database") | nindent 14 }}
+      ports:
+        - port: 5432
+          protocol: TCP
+{{- end }}

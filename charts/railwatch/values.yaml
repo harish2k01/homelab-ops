@@ -1,0 +1,140 @@
+# One image serves both application roles; RAILWATCH_SERVICE selects frontend or backend.
+image:
+  repository: ghcr.io/harish2k01/railwatch
+  # Use a published release tag; blank uses appVersion.
+  tag: v2.21.8
+  # When set, digest takes precedence over tag. A digest change rolls out new pods.
+  digest: "sha256:d16bba0b5369a7b91ca3301994c9244dc891a4b55a7472a22394ca3828c313dc"
+  pullPolicy: IfNotPresent
+# Add an existing registry Secret when the GHCR package is private.
+imagePullSecrets: []
+# Keep "railwatch" so the chart adopts the existing workload, Service and policy names.
+nameOverride: ""
+fullnameOverride: railwatch
+# Canonical browser URL used for links, OAuth callbacks and origin checks.
+appUrl: https://railwatch.k8s.harish2k01.xyz
+# Externally managed Secret: POSTGRES_USER, POSTGRES_DB, POSTGRES_PASSWORD, DATABASE_URL,
+# APP_ENCRYPTION_KEY, CRON_SECRET and RATE_LIMIT_SALT. The chart never creates it.
+existingSecret: railwatch-secrets
+serviceAccount:
+  create: true
+  name: railwatch
+revisionHistoryLimit: 3
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+frontend:
+  replicaCount: 2
+  port: 3000
+  terminationGracePeriodSeconds: 30
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 750m
+      memory: 768Mi
+  extraEnv: []
+
+backend:
+  replicaCount: 2
+  port: 3001
+  # Scheduled work and in-flight uploads finish before shutdown.
+  terminationGracePeriodSeconds: 300
+  normalizedStorage: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 750m
+      memory: 768Mi
+  extraEnv: []
+
+# Applies checked-in Prisma migrations as an Argo CD Sync hook before the app rolls out.
+migrations:
+  enabled: true
+  activeDeadlineSeconds: 600
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+postgres:
+  enabled: true
+  image: postgres:18-alpine
+  # Existing claim; the chart does not create or replace database storage.
+  existingClaim: railwatch-postgres-data
+  # Matches POSTGRES_USER / POSTGRES_DB in the Secret; used by pg_isready probes.
+  user: railwatch
+  database: railwatch
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+backup:
+  enabled: true
+  schedule: "0 3 * * *"
+  timeZone: Asia/Kolkata
+  retentionDays: 14
+  existingClaim: railwatch-postgres-backups
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+networkPolicy:
+  enabled: true
+  # Only the Gateway controller namespace may reach the frontend.
+  gatewayNamespace: traefik
+  # Outgoing provider traffic: HTTPS (Telegram, Google, push) and SMTP.
+  backendEgressPorts: [443, 465, 587, 25]
+
+service:
+  port: 80
+
+ingress:
+  enabled: false
+
+# Gateway API routes. Every enabled entry creates one HTTPRoute named <fullname>-<key>.
+httpRoutes:
+  internal:
+    enabled: true
+    # Optional explicit name; "railwatch" adopts the route created before this chart.
+    name: railwatch
+    annotations: {}
+    parentRefs:
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: websecure
+    hostnames:
+      - railwatch.k8s.harish2k01.xyz
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

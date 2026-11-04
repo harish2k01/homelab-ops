@@ -1,0 +1,86 @@
+{{- $fullName := include "railwatch.fullname" . -}}
+{{- range $role := list "backend" "frontend" }}
+{{- $cfg := index $.Values $role }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-{{ $role }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "railwatch.labels" (list $ $role) | nindent 4 }}
+spec:
+  replicas: {{ $cfg.replicaCount }}
+  revisionHistoryLimit: {{ $.Values.revisionHistoryLimit }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "railwatch.selectorLabels" (list $ $role) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "railwatch.labels" (list $ $role) | nindent 8 }}
+      {{- if eq $role "backend" }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") $ | sha256sum }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "railwatch.serviceAccountName" $ }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ $cfg.terminationGracePeriodSeconds }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $role }}
+          image: {{ include "railwatch.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $cfg.port }}
+              protocol: TCP
+          env:
+            - name: RAILWATCH_SERVICE
+              value: {{ $role }}
+            {{- if eq $role "backend" }}
+            - name: BACKEND_PORT
+              value: {{ $cfg.port | quote }}
+            - name: RAILWATCH_NORMALIZED_STORAGE
+              value: {{ $cfg.normalizedStorage | quote }}
+            {{- else }}
+            - name: BACKEND_URL
+              value: http://{{ $fullName }}-backend:{{ $.Values.backend.port }}
+            - name: APP_URL
+              value: {{ $.Values.appUrl | quote }}
+            {{- end }}
+            {{- with $cfg.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if eq $role "backend" }}
+          # Only the backend holds database and provider credentials.
+          envFrom:
+            - secretRef:
+                name: {{ include "railwatch.secretName" $ }}
+            - configMapRef:
+                name: {{ $fullName }}-config
+          {{- end }}
+          {{- include "railwatch.probes" $ | nindent 10 }}
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- include "railwatch.scheduling" $ | nindent 6 }}
+{{- end }}
