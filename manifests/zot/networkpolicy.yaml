@@ -1,0 +1,31 @@
+# The ARC runners (arc-systems) pull through the cache and Traefik serves the UI; the cache
+# itself may reach only DNS and HTTPS (Docker Hub, ghcr.io).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zot
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zot
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: arc-systems
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 5000
+          protocol: TCP
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
