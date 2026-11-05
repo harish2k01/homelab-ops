@@ -2,9 +2,9 @@
 image:
   repository: ghcr.io/harish2k01/railwatch
   # Use a published release tag; blank uses appVersion.
-  tag: v3.1.0
+  tag: v3.2.0
   # When set, digest takes precedence over tag. A digest change rolls out new pods.
-  digest: "sha256:482af968840e34c26a2f9e737a537aff5a6daace53235e9047cbf0486e559de8"
+  digest: "sha256:cfef0346e2dee93dd40dbb5fa58e8655f6b9d4b6c2e4ca159303382fcb6322e0"
   pullPolicy: IfNotPresent
 # Add an existing registry Secret when the GHCR package is private.
 imagePullSecrets: []
