@@ -1,14 +1,18 @@
-name: Build RailWatch runner image
+name: Build runner image
 on:
   pull_request:
     paths:
-      - images/railwatch-runner/**
+      - images/**
       - .github/workflows/runner-image.yaml
   push:
     branches: [main]
     paths:
-      - images/railwatch-runner/**
+      - images/**
       - .github/workflows/runner-image.yaml
+  # Monthly rebuild picks up the newest actions-runner base, apt packages and CLIs. Runner pods
+  # pull :latest on every job, so the next jobs use it without a values change.
+  schedule:
+    - cron: "17 3 1 * *"
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,7 +29,7 @@ jobs:
       contents: read
       packages: write
     env:
-      IMAGE: ghcr.io/harish2k01/railwatch-runner
+      IMAGE: ghcr.io/harish2k01/ci-runner
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,24 +44,24 @@ jobs:
       - name: Image tags
         id: meta
         run: |
-          version="$(sed -n 's/^ARG RUNNER_VERSION=//p' images/railwatch-runner/Dockerfile)"
+          version="$(sed -n 's/^ARG RUNNER_VERSION=//p' "images/ci-runner/Dockerfile")"
           echo "tags=$IMAGE:$version-${GITHUB_SHA::7},$IMAGE:latest" >> "$GITHUB_OUTPUT"
-      - name: Build (and push from main)
+      - name: Build (and push outside pull requests)
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: images/railwatch-runner
+          context: images/ci-runner
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=ARC runner for RailWatch CI
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            org.opencontainers.image.description=ARC runner image for the homelab repositories
+          cache-from: type=gha,scope=ci-runner
+          cache-to: type=gha,mode=max,scope=ci-runner
       - name: Record digest
         if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "Pin \`$IMAGE@$DIGEST\` in railwatch-values.yaml." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pushed \`$IMAGE@$DIGEST\` as :latest (runner sets pull it on every job)." >> "$GITHUB_STEP_SUMMARY"

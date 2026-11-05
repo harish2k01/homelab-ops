@@ -1,28 +1,85 @@
-# Dedicated runner for portfolio-next validation, releases, builds and GitOps updates.
+# Runner for portfolio-next validation (Node 24), container smoke tests and image builds.
 githubConfigUrl: https://github.com/harish2k01/portfolio-next
 githubConfigSecret: arc-github-app
 runnerScaleSetName: portfolio-next-runner
 minRunners: 0
 maxRunners: 3
-# Match the existing Portfolio runner: ARC creates an ephemeral DinD sidecar.
-containerMode:
-  type: dind
-# Match existing ARC runners: sudo installs workflow dependencies inside the ephemeral runner.
+# Image builds need a Docker daemon. This is the pod the chart generates for containerMode
+# "dind", written out so dockerd can pull Docker Hub images through the in-cluster cache
+# (the chart's dind mode does not accept extra dockerd arguments).
 # No mounted Kubernetes credentials or persistent workspace in the runner.
 template:
   spec:
     automountServiceAccountToken: false
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/harish2k01/ci-runner:latest
+        imagePullPolicy: Always
+        command: ["cp"]
+        args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+      # Native sidecar: starts before the runner and stops after it.
+      - name: dind
+        image: docker:29.9.3-dind
+        restartPolicy: Always
+        args:
+          - dockerd
+          - --host=unix:///var/run/docker.sock
+          - --group=$(DOCKER_GROUP_GID)
+          - --registry-mirror=http://zot.zot.svc.cluster.local:5000
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        startupProbe:
+          exec:
+            command: ["docker", "info"]
+          failureThreshold: 24
+          periodSeconds: 5
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
     containers:
       - name: runner
-        image: ghcr.io/actions/actions-runner:latest
+        # Shared runner image (images/ci-runner): workflow tools preinstalled, rebuilt monthly.
+        image: ghcr.io/harish2k01/ci-runner:latest
+        imagePullPolicy: Always
         command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+          # In-cluster npm cache (Verdaccio); npm rewrites lockfile registry.npmjs.org URLs to it.
+          - name: NPM_CONFIG_REGISTRY
+            value: http://verdaccio.verdaccio.svc.cluster.local:4873/
+        # Requests reserve real capacity so the scheduler spreads parallel builds across nodes.
         resources:
           requests:
-            cpu: "500m"
-            memory: "1Gi"
-          limits:
             cpu: "1500m"
-            memory: "2.5Gi"
+            memory: "2Gi"
+          limits:
+            cpu: "3"
+            memory: "4Gi"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+    volumes:
+      - name: work
+        emptyDir: {}
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
 controllerServiceAccount:
   namespace: arc-systems
   name: arc-gha-rs-controller

@@ -1,21 +1,23 @@
-# Dedicated runner for tech-bytes-playground Ghost theme validation, packaging and releases.
+# Runner for the tech-bytes-playground theme build and release (Node 24, npm, gh; no Docker).
 githubConfigUrl: https://github.com/harish2k01/tech-bytes-playground
 githubConfigSecret: arc-github-app
 runnerScaleSetName: tech-bytes-playground-runner
 minRunners: 0
 maxRunners: 3
-# Docker remains available for builds; workflow steps run directly in the runner.
-containerMode:
-  type: dind
-# Match existing ARC runners: sudo installs workflow dependencies inside the ephemeral runner.
-# No mounted Kubernetes credentials or persistent workspace in the runner.
+# No Docker daemon or mounted Kubernetes credentials in the runner.
 template:
   spec:
     automountServiceAccountToken: false
     containers:
       - name: runner
-        image: ghcr.io/actions/actions-runner:latest
+        # Shared runner image (images/ci-runner): workflow tools preinstalled, rebuilt monthly.
+        image: ghcr.io/harish2k01/ci-runner:latest
+        imagePullPolicy: Always
         command: ["/home/runner/run.sh"]
+        env:
+          # In-cluster npm cache (Verdaccio); npm rewrites lockfile registry.npmjs.org URLs to it.
+          - name: NPM_CONFIG_REGISTRY
+            value: http://verdaccio.verdaccio.svc.cluster.local:4873/
         resources:
           requests:
             cpu: "500m"
