@@ -3,9 +3,9 @@ replicaCount: 2
 image:
   repository: ghcr.io/harish2k01/portfolio-next
   # Use a published release or immutable content tag; blank uses appVersion.
-  tag: v0.4.2
+  tag: v0.4.3
   # When set, digest takes precedence over tag. A digest change rolls out new pods.
-  digest: "sha256:616b531f6db02dda598b394149ce2b2a27ac73dc2a7d3e5eb6f79bb1fb0321dc"
+  digest: "sha256:1b452332ae2404934720f7357fcde78f80fa2a6e616e67e2c3d28a7fc5206876"
   pullPolicy: IfNotPresent
 # Add an existing registry Secret when the GHCR package is private.
 imagePullSecrets: []
