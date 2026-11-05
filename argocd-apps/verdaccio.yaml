@@ -22,9 +22,11 @@ spec:
       path: manifests/verdaccio
   destination:
     server: https://kubernetes.default.svc
-    namespace: arc-systems
+    namespace: verdaccio
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
   revisionHistoryLimit: 3

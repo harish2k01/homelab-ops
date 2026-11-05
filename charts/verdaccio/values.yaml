@@ -79,8 +79,12 @@ configMap: |
       enabled: true
   server:
     keepAliveTimeout: 60
+  # Read-only browsing UI at https://verdaccio.k8s.harish2k01.xyz (manifests/verdaccio):
+  # there are no users and max_users is -1, so nobody can sign in.
   web:
-    enable: false
+    enable: true
+    title: Verdaccio (CI npm cache)
+    login: false
   log:
     type: stdout
     format: json
