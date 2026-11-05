@@ -48,7 +48,7 @@ RUN set -eux; \
       url="$(curl -fsSL https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json \
         | jq -r --arg v "$v" --arg os "$VERSION_ID" '.[] | select(.version==$v) | .files[] | select(.platform=="linux" and .platform_version==$os and .arch=="x64") | .download_url')"; \
       curl -fsSL "$url" | tar -xz -C "$tmp"; \
-      (cd "$tmp" && ./setup.sh); \
+      (cd "$tmp" && bash ./setup.sh); \
       rm -rf "$tmp"; \
     done; \
     # Portfolio's release job: semantic-release and plugins on Node 24's global path.
