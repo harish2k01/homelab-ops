@@ -11,7 +11,8 @@ template:
     containers:
       - name: runner
         # General runner image (images/ci-runner): apt tools and Node 22/24/26 preinstalled.
-        image: ghcr.io/harish2k01/ci-runner@sha256:4472659126f6be8f2de1146f7de673cb4300b8b0c3832758d09cab46a444c826
+        image: ghcr.io/harish2k01/ci-runner:latest
+        imagePullPolicy: Always
         command: ["/home/runner/run.sh"]
         env:
           # In-cluster npm cache (Verdaccio); npm rewrites lockfile registry.npmjs.org URLs to it.

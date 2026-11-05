@@ -9,6 +9,10 @@ on:
     paths:
       - images/**
       - .github/workflows/runner-image.yaml
+  # Monthly rebuild picks up the newest actions-runner base, apt packages and CLIs. Runner pods
+  # pull :latest on every job, so the next jobs use it without a values change.
+  schedule:
+    - cron: "17 3 1 * *"
   workflow_dispatch:
 permissions:
   contents: read
@@ -69,4 +73,4 @@ jobs:
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "Pin \`$IMAGE@$DIGEST\` in the runner values files." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin \`$IMAGE@$DIGEST\` as :latest (runner sets pull it on every job)." >> "$GITHUB_STEP_SUMMARY"
