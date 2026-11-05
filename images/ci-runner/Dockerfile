@@ -1,12 +1,12 @@
-# General ARC runner for the homelab repositories (helm-charts, homelab-ops, papervault,
-# portfolio, portfolio-next, portfolio-tracker, tech-bytes-playground) with the tools their
+# Single ARC runner image for every homelab repository (helm-charts, homelab-ops, papervault,
+# portfolio, portfolio-next, portfolio-tracker, railwatch, tech-bytes-playground) with the tools their
 # workflows used to install at run time, so those steps are gone from the workflows:
 #   apt tools (curl git jq unzip zstd python3 build-essential gnupg), GitHub CLI (upstream apt
 #   repo, current release), Helm, Node 22/24/26 and Python 3.12/3.13 in the Actions tool cache
-#   (setup-node/setup-python find them instead of downloading), semantic-release for Portfolio.
+#   (setup-node/setup-python find them instead of downloading), semantic-release for Portfolio,
+#   Playwright Chromium for RailWatch.
 # Built by .github/workflows/runner-image.yaml (monthly and on change) and used as :latest by
 # charts/actions-runner-controller/gha-runner-scale-set/*-values.yaml.
-# RailWatch has its own image (images/railwatch-runner) because it also needs Playwright.
 ARG RUNNER_VERSION=latest
 FROM ghcr.io/actions/actions-runner:${RUNNER_VERSION}
 
@@ -58,4 +58,17 @@ RUN set -eux; \
     rm -rf /root/.npm; \
     chown -R runner:runner "$RUNNER_TOOL_CACHE"
 
+# Chromium and its system libraries for RailWatch's browser suites. Keep in step with the
+# playwright version in RailWatch's package-lock.json; a newer one still works, the job then
+# downloads only its own browser build.
+ARG PLAYWRIGHT_VERSION=1.63.0
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN set -eux; \
+    export PATH="$RUNNER_TOOL_CACHE/node/24.22.2/x64/bin:$PATH"; \
+    npx --yes "playwright@$PLAYWRIGHT_VERSION" install --with-deps chromium; \
+    rm -rf /root/.npm /var/lib/apt/lists/*; \
+    chown -R runner:runner "$PLAYWRIGHT_BROWSERS_PATH"
+
+# RailWatch workflows skip their own system-package and browser-dependency installs on it.
+ENV RAILWATCH_PREBUILT_RUNNER=1
 USER runner

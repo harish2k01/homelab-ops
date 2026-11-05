@@ -48,7 +48,7 @@ template:
             mountPath: /home/runner/externals
     containers:
       - name: runner
-        # General runner image (images/ci-runner): apt tools and Node 22/24/26 preinstalled.
+        # Shared runner image (images/ci-runner): workflow tools preinstalled, rebuilt monthly.
         image: ghcr.io/harish2k01/ci-runner:latest
         imagePullPolicy: Always
         command: ["/home/runner/run.sh"]

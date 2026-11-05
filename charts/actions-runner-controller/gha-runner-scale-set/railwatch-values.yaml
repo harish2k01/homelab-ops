@@ -14,7 +14,7 @@ template:
     automountServiceAccountToken: false
     initContainers:
       - name: init-dind-externals
-        image: ghcr.io/harish2k01/railwatch-runner:latest
+        image: ghcr.io/harish2k01/ci-runner:latest
         imagePullPolicy: Always
         command: ["cp"]
         args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
@@ -49,10 +49,10 @@ template:
             mountPath: /home/runner/externals
     containers:
       - name: runner
-        # Prebuilt RailWatch runner (images/railwatch-runner, rebuilt monthly; pulled as :latest on every job): workflow tools,
-        # Node 24 in the tool cache and Chromium with its system libraries preinstalled. The
+        # Shared runner image (images/ci-runner, rebuilt monthly; pulled as :latest on every job): workflow tools,
+        # Node in the tool cache and Chromium with its system libraries preinstalled. The
         # init container above copies externals from the same image.
-        image: ghcr.io/harish2k01/railwatch-runner:latest
+        image: ghcr.io/harish2k01/ci-runner:latest
         imagePullPolicy: Always
         command: ["/home/runner/run.sh"]
         env:
