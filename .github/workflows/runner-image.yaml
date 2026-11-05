@@ -1,13 +1,13 @@
-name: Build RailWatch runner image
+name: Build runner images
 on:
   pull_request:
     paths:
-      - images/railwatch-runner/**
+      - images/**
       - .github/workflows/runner-image.yaml
   push:
     branches: [main]
     paths:
-      - images/railwatch-runner/**
+      - images/**
       - .github/workflows/runner-image.yaml
   workflow_dispatch:
 permissions:
@@ -24,8 +24,17 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One image per distinct toolset (directory under images/).
+          - name: railwatch-runner
+            description: ARC runner for RailWatch CI
+          - name: ci-runner
+            description: General ARC runner for the homelab repositories
     env:
-      IMAGE: ghcr.io/harish2k01/railwatch-runner
+      IMAGE: ghcr.io/harish2k01/${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,24 +49,24 @@ jobs:
       - name: Image tags
         id: meta
         run: |
-          version="$(sed -n 's/^ARG RUNNER_VERSION=//p' images/railwatch-runner/Dockerfile)"
+          version="$(sed -n 's/^ARG RUNNER_VERSION=//p' "images/${{ matrix.name }}/Dockerfile")"
           echo "tags=$IMAGE:$version-${GITHUB_SHA::7},$IMAGE:latest" >> "$GITHUB_OUTPUT"
-      - name: Build (and push from main)
+      - name: Build (and push outside pull requests)
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: images/railwatch-runner
+          context: images/${{ matrix.name }}
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=ARC runner for RailWatch CI
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            org.opencontainers.image.description=${{ matrix.description }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Record digest
         if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "Pin \`$IMAGE@$DIGEST\` in railwatch-values.yaml." >> "$GITHUB_STEP_SUMMARY"
+          echo "Pin \`$IMAGE@$DIGEST\` in the runner values files." >> "$GITHUB_STEP_SUMMARY"
