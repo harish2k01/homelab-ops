@@ -2,9 +2,9 @@
 image:
   repository: ghcr.io/harish2k01/railwatch
   # Use a published release tag; blank uses appVersion.
-  tag: v2.21.8
+  tag: v2.22.1
   # When set, digest takes precedence over tag. A digest change rolls out new pods.
-  digest: "sha256:d16bba0b5369a7b91ca3301994c9244dc891a4b55a7472a22394ca3828c313dc"
+  digest: "sha256:ddb9f9790bf4d1d3524b18095ac8fb9bc4a6d60db99763e157ea468572f41b9e"
   pullPolicy: IfNotPresent
 # Add an existing registry Secret when the GHCR package is private.
 imagePullSecrets: []
@@ -32,7 +32,6 @@ securityContext:
   capabilities:
     drop: [ALL]
   readOnlyRootFilesystem: true
-
 frontend:
   replicaCount: 2
   port: 3000
@@ -45,7 +44,6 @@ frontend:
       cpu: 750m
       memory: 768Mi
   extraEnv: []
-
 backend:
   replicaCount: 2
   port: 3001
@@ -60,7 +58,6 @@ backend:
       cpu: 750m
       memory: 768Mi
   extraEnv: []
-
 # Applies checked-in Prisma migrations as an Argo CD Sync hook before the app rolls out.
 migrations:
   enabled: true
@@ -72,7 +69,6 @@ migrations:
     limits:
       cpu: 500m
       memory: 512Mi
-
 postgres:
   enabled: true
   image: postgres:18-alpine
@@ -88,7 +84,6 @@ postgres:
     limits:
       cpu: "1"
       memory: 1Gi
-
 backup:
   enabled: true
   schedule: "0 3 * * *"
@@ -102,20 +97,16 @@ backup:
     limits:
       cpu: 500m
       memory: 256Mi
-
 networkPolicy:
   enabled: true
   # Only the Gateway controller namespace may reach the frontend.
   gatewayNamespace: traefik
   # Outgoing provider traffic: HTTPS (Telegram, Google, push) and SMTP.
   backendEgressPorts: [443, 465, 587, 25]
-
 service:
   port: 80
-
 ingress:
   enabled: false
-
 # Gateway API routes. Every enabled entry creates one HTTPRoute named <fullname>-<key>.
 httpRoutes:
   internal:
@@ -134,7 +125,6 @@ httpRoutes:
           - path:
               type: PathPrefix
               value: /
-
 nodeSelector: {}
 tolerations: []
 affinity: {}
