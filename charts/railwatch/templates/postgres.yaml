@@ -40,10 +40,13 @@ spec:
   selector:
     matchLabels:
       {{- include "railwatch.selectorLabels" (list . "database") | nindent 6 }}
+  # Pod labels must not carry the app version: a new label restarts PostgreSQL (and reattaches its
+  # volume) on every RailWatch release.
   template:
     metadata:
       labels:
-        {{- include "railwatch.labels" (list . "database") | nindent 8 }}
+        {{- include "railwatch.selectorLabels" (list . "database") | nindent 8 }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       automountServiceAccountToken: false
       securityContext:
