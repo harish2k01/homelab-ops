@@ -28,7 +28,7 @@ template:
           - dockerd
           - --host=unix:///var/run/docker.sock
           - --group=$(DOCKER_GROUP_GID)
-          - --registry-mirror=http://docker-mirror.arc-systems.svc.cluster.local:5000
+          - --registry-mirror=http://zot.zot.svc.cluster.local:5000
         env:
           - name: DOCKER_GROUP_GID
             value: "123"

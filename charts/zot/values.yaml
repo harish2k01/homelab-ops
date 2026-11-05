@@ -1,0 +1,123 @@
+# Values for the upstream project-zot/zot chart, used by argocd-apps/zot.yaml as the in-cluster
+# pull-through cache for the self-hosted CI runners in arc-systems (replaces the hand-written
+# registry:3 Docker Hub mirror). Images are fetched on demand and dropped again after two weeks
+# without a pull, so losing the volume only means the next run pulls from upstream again.
+#
+#   docker.io images  -> served at the root, e.g. zot.zot.svc.cluster.local:5000/library/alpine
+#                        (what dockerd's --registry-mirror and BuildKit mirrors ask for)
+#   ghcr.io images    -> served under ghcr.io/, e.g. zot.zot.svc.cluster.local:5000/ghcr.io/actions/...
+#
+# The full zot image includes the web UI at https://zot.k8s.harish2k01.xyz (manifests/zot route,
+# GET/HEAD only, so nothing can be pushed through it).
+
+service:
+  type: ClusterIP
+  port: 5000
+
+
+persistence: true
+pvc:
+  create: true
+  accessModes: [ReadWriteOnce]
+  storage: 8Gi
+  storageClassName: longhorn
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+startupProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 24
+
+# Rendered into a Secret and mounted at /etc/zot/config.json (configFiles cleared so the
+# chart sample config does not conflict).
+configFiles:
+  config.json: null
+config:
+  distSpecVersion: 1.1.1
+  storage:
+    rootDirectory: /var/lib/registry
+    dedupe: true
+    gc: true
+    gcDelay: 1h
+    gcInterval: 24h
+    retention:
+      delay: 24h
+      policies:
+        - repositories: ["**"]
+          deleteReferrers: true
+          deleteUntagged: true
+          keepTags:
+            # Keep a tag only while something pulled it within the last two weeks.
+            - patterns: [".*"]
+              pulledWithin: 336h
+  http:
+    address: 0.0.0.0
+    port: "5000"
+  log:
+    level: info
+  extensions:
+    search:
+      enable: true
+      cve:
+        # No vulnerability database downloads: this is only a cache.
+        updateInterval: 0h
+    ui:
+      enable: true
+    sync:
+      enable: true
+      registries:
+        - urls: [https://registry-1.docker.io]
+          onDemand: true
+          tlsVerify: true
+          maxRetries: 3
+          retryDelay: 5s
+          content:
+            - prefix: "**"
+        - urls: [https://ghcr.io]
+          onDemand: true
+          tlsVerify: true
+          maxRetries: 3
+          retryDelay: 5s
+          content:
+            - prefix: "**"
+              destination: /ghcr.io
+              stripPrefix: false
+
+httproute:
+  enabled: true
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: websecure
+  hostnames:
+    - zot.k8s.harish2k01.xyz
+  rules:
+    - matches:
+        - method: GET
+          path:
+            type: PathPrefix
+            value: /
+        - method: HEAD
+          path:
+            type: PathPrefix
+            value: /

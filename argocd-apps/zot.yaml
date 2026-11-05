@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zot
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Docker Hub + ghcr.io pull-through cache (with web UI) for the self-hosted CI runners.
+    - repoURL: https://zotregistry.dev/helm-charts
+      chart: zot
+      targetRevision: 0.1.130
+      helm:
+        releaseName: zot
+        valueFiles:
+          - $values/charts/zot/values.yaml
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/harish2k01/homelab-ops
+      targetRevision: main
+      path: manifests/zot
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zot
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 3
