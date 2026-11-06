@@ -5,7 +5,7 @@ replicaCount: 2
 image:
   repository: tailscale/tailscale
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "v1.104.1"
+  tag: "v1.104.4"
   pullPolicy: IfNotPresent
 
 # Store the auth key in a Sealed Secret or manually created Secret named below.
