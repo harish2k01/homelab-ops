@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghost
-  tag: "6.37.0"
+  tag: "6.75.0-alpine@sha256:3af1575bb8917c6c0057beff85db92a4ac650f726956fd9de96932fea01c397c"
   pullPolicy: IfNotPresent
 
 podSecurityContext:
@@ -13,7 +13,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-      - ALL
+    - ALL
   runAsNonRoot: true
   runAsUser: 1000
   runAsGroup: 1000
@@ -24,7 +24,7 @@ deployment:
   strategy:
     type: Recreate
   revisionHistoryLimit: 3
-  terminationGracePeriodSeconds: 60
+  terminationGracePeriodSeconds: 150
 
 env:
   url: https://harish2k01.in
@@ -34,61 +34,31 @@ env:
   mail__options__port: "587"
   mail__options__auth__user: harish.techinsights@gmail.com
   mail__from: Tech Insights
+  database__client: mysql
+  database__connection__host: ghost-mysql8
+  database__connection__port: "3306"
+  database__connection__user: ghost
+  database__connection__database: ghost
 
 secretEnv:
   existingSecret:
     name: ghost-secret
     keys:
-      - envName: mail__options__auth__pass
-        secretKey: mail__options__auth__pass
-        optional: false
+    - envName: mail__options__auth__pass
+      secretKey: mail__options__auth__pass
+      optional: false
 
 mysql:
-  enabled: true
-  image:
-    repository: mysql
-    tag: "9.7"
-    pullPolicy: IfNotPresent
-  auth:
-    database: ghost
-    username: ghost
-    existingSecret: ghost-mysql-secret
-    passwordKey: db-password
-    rootPasswordKey: db-root-password
-  persistence:
-    enabled: true
-    accessModes:
-      - ReadWriteOnce
-    size: 1Gi
-    storageClassName: longhorn
-  podSecurityContext:
-    fsGroup: 1000
-    fsGroupChangePolicy: OnRootMismatch
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    runAsNonRoot: true
-    runAsUser: 1000
-    runAsGroup: 1000
-    seccompProfile:
-      type: RuntimeDefault
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
+  enabled: false
 
 persistence:
   content:
     enabled: true
     accessModes:
-      - ReadWriteOnce
+    - ReadWriteOnce
     size: 2Gi
     storageClassName: longhorn
+    existingClaim: ghost-content-migrated-20261106
 
 service:
   type: ClusterIP
@@ -165,3 +135,9 @@ affinity: {}
 activityPub:
   enabled: true
   target: https://ap.ghost.org
+extraEnv:
+- name: database__connection__password
+  valueFrom:
+    secretKeyRef:
+      name: ghost-mysql8-secret
+      key: db-password

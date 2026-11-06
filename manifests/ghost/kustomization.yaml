@@ -4,3 +4,7 @@ kind: Kustomization
 resources:
   - ghost-mysql-secret.yaml
   - ghost-secret.yaml
+  - content-legacy.yaml
+  - mysql-legacy.yaml
+  - mysql8.yaml
+  - ghost-mysql8-secret.yaml
