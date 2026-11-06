@@ -6,7 +6,7 @@ fullnameOverride: cloudflared-deployment
 image:
   repository: cloudflare/cloudflared
   # Pinned to a versioned tag so Renovate can raise image update PRs.
-  tag: "2026.10.2"
+  tag: "2026.10.7"
   pullPolicy: IfNotPresent
 
 selectorLabels:
