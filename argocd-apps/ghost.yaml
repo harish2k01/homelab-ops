@@ -22,14 +22,6 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ghost
-  # StatefulSet claim-template labels are immutable. Chart version labels may
-  # change without replacing the database or its persistent volume.
-  ignoreDifferences:
-    - group: apps
-      kind: StatefulSet
-      name: ghost-mysql
-      jsonPointers:
-        - /spec/volumeClaimTemplates/0/metadata/labels
   syncPolicy:
     automated:
       prune: true
