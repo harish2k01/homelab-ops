@@ -2,6 +2,9 @@
 # router pods without the Tailscale Kubernetes operator.
 replicaCount: 2
 
+hostNetwork: false
+dnsPolicy: ""
+
 image:
   repository: tailscale/tailscale
   # Pinned to a versioned tag so Renovate can raise image update PRs.

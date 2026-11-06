@@ -11,7 +11,7 @@ spec:
     # 🔹 Upstream Helm chart
     - repoURL: https://charts.harish2k01.in
       chart: firefly-iii
-      targetRevision: 0.2.2
+      targetRevision: 0.2.3
       helm:
         releaseName: firefly-iii
         valueFiles:
