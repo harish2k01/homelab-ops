@@ -61,6 +61,13 @@ mysql:
       - ReadWriteOnce
     size: 1Gi
     storageClassName: longhorn
+    claimTemplateLabels:
+      app.kubernetes.io/component: "mysql"
+      app.kubernetes.io/instance: "ghost"
+      app.kubernetes.io/managed-by: "Helm"
+      app.kubernetes.io/name: "ghost"
+      app.kubernetes.io/version: "6.39.0-alpine"
+      helm.sh/chart: "ghost-0.1.2"
   podSecurityContext:
     fsGroup: 1000
     fsGroupChangePolicy: OnRootMismatch
