@@ -115,8 +115,7 @@ spec:
               command:
                 - sh
                 - -c
-                - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u
-                  "$MYSQL_USER" --silent
+                - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u "$MYSQL_USER" --silent
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 120
@@ -125,8 +124,7 @@ spec:
               command:
                 - sh
                 - -c
-                - MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u
-                  "$MYSQL_USER" -D "$MYSQL_DATABASE" -N -e "SELECT 1" >/dev/null
+                - MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" -D "$MYSQL_DATABASE" -N -e "SELECT 1" >/dev/null
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 6
@@ -135,8 +133,7 @@ spec:
               command:
                 - sh
                 - -c
-                - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u
-                  "$MYSQL_USER" --silent
+                - MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin ping -h 127.0.0.1 -u "$MYSQL_USER" --silent
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 6
@@ -152,27 +149,3 @@ spec:
         resources:
           requests:
             storage: 2Gi
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: ghost-mysql8-isolation
-  namespace: ghost
-  labels:
-    migration.ghost.harish2k01.io/id: ghost-migration-20261106
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: ghost-mysql8
-      app.kubernetes.io/instance: ghost-migration
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: ghost
-              app.kubernetes.io/instance: ghost
-      ports:
-        - protocol: TCP
-          port: 3306
