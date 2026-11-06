@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://charts.harish2k01.in
       chart: vaultwarden
-      targetRevision: 0.2.1
+      targetRevision: 0.2.2
       helm:
         releaseName: vaultwarden
         valueFiles:

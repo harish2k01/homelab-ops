@@ -8,7 +8,7 @@ spec:
   sources:
     - repoURL: https://charts.harish2k01.in
       chart: ghost
-      targetRevision: 0.3.4
+      targetRevision: 0.3.5
       helm:
         releaseName: ghost
         valueFiles:
