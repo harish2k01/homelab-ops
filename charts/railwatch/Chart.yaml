@@ -3,7 +3,7 @@ name: railwatch
 description: RailWatch train travel planner with a Next.js frontend, Fastify backend and PostgreSQL
 type: application
 version: 0.1.0
-appVersion: "v3.35.0"
+appVersion: "v3.36.0"
 home: https://github.com/harish2k01/railwatch
 sources:
   - https://github.com/harish2k01/railwatch
