@@ -4710,11 +4710,11 @@ prometheus:
     ##
     resources:
       limits:
-        cpu: 500m
-        memory: 1000Mi
+        cpu: 1
+        memory: 1.5Gi
       requests:
-        cpu: 250m
-        memory: 500Mi
+        cpu: 500m
+        memory: 0.5Gi
 
     ## Prometheus StorageSpec for persistent data
     ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/platform/storage.md
