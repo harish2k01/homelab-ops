@@ -9,7 +9,7 @@ spec:
     # npm cache for the self-hosted CI runners: upstream Verdaccio chart
     - repoURL: https://charts.verdaccio.org
       chart: verdaccio
-      targetRevision: 7.2.0
+      targetRevision: 7.6.0
       helm:
         releaseName: verdaccio
         valueFiles:
