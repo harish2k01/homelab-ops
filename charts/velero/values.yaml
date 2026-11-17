@@ -1,0 +1,189 @@
+# Velero: Kubernetes-aware backups of PVC data.
+#
+# Flow per PVC: CSI VolumeSnapshot (Longhorn, type=snap) -> temporary PVC from
+# the snapshot -> node-agent data mover uploads it with Kopia to the Garage S3
+# bucket -> snapshot and temporary PVC are deleted. The Kopia repository can be
+# opened with the standalone `kopia` CLI, without Velero or Longhorn.
+#
+# Resource definitions live in Git (Argo CD), so restores normally only bring
+# back PVCs + data: see manifests/velero/README.md.
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.14.4
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+# Pre-sync job applies the Velero CRDs on chart upgrades.
+upgradeCRDs: true
+
+credentials:
+  useSecret: true
+  # SealedSecret in manifests/velero. Key `cloud`, AWS credentials-file format:
+  #   [default]
+  #   aws_access_key_id=<garage key id>
+  #   aws_secret_access_key=<garage secret>
+  existingSecret: velero-s3-credentials
+
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: velero
+      default: true
+      config:
+        region: garage
+        s3ForcePathStyle: "true"
+        # TODO: set to the Garage S3 endpoint once it is running, e.g.
+        # http://10.10.10.x:3900 (Garage LXC on Proxmox, data on TrueNAS).
+        s3Url: http://garage.homelab.internal:3900
+        # Garage does not implement the newer AWS SDK default checksums.
+        checksumAlgorithm: ""
+
+  # No provider-native snapshots; CSI snapshots + data mover are used instead.
+  volumeSnapshotLocation: []
+
+  uploaderType: kopia
+  # Move CSI snapshot data into the Kopia repository by default, so backups
+  # survive the loss of Longhorn volumes, nodes or the whole cluster.
+  defaultSnapshotMoveData: true
+  defaultBackupTTL: 336h # 14 days
+  defaultItemOperationTimeout: 2h
+  garbageCollectionFrequency: 1h
+
+  repositoryMaintenanceJob:
+    repositoryConfigData:
+      name: velero-repo-maintenance
+      global:
+        podResources:
+          cpuRequest: 100m
+          cpuLimit: "1"
+          memoryRequest: 256Mi
+          memoryLimit: 1Gi
+        keepLatestMaintenanceJobs: 1
+
+snapshotsEnabled: false
+
+deployNodeAgent: true
+
+nodeAgent:
+  extraArgs:
+    - --node-agent-configmap=velero-node-agent-config
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: kube-prometheus-stack
+  nodeAgentPodMonitor:
+    enabled: true
+    additionalLabels:
+      release: kube-prometheus-stack
+  prometheusRule:
+    enabled: true
+    additionalLabels:
+      release: kube-prometheus-stack
+    spec:
+      - alert: VeleroBackupFailed
+        expr: increase(velero_backup_failure_total{schedule!=""}[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Velero backup for schedule {{ $labels.schedule }} failed.
+      - alert: VeleroBackupPartiallyFailed
+        expr: increase(velero_backup_partial_failure_total{schedule!=""}[1h]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Velero backup for schedule {{ $labels.schedule }} partially failed.
+      - alert: VeleroNoRecentBackup
+        expr: (time() - velero_backup_last_successful_timestamp{schedule="velero-daily"}) > 93600
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: No successful daily Velero backup in the last 26 hours.
+
+configMaps:
+  # Data mover tuning (velero-node-agent-config). One volume at a time per
+  # node keeps CPU/RAM and temporary snapshot space low.
+  node-agent-config:
+    data:
+      node-agent-config.json: |
+        {
+          "loadConcurrency": { "globalConfig": 1 },
+          "podResources": {
+            "cpuRequest": "100m",
+            "cpuLimit": "1",
+            "memoryRequest": "256Mi",
+            "memoryLimit": "1Gi"
+          }
+        }
+
+  # Volume policy used by the schedules (velero-volume-policy).
+  volume-policy:
+    data:
+      policy.yaml: |
+        version: v1
+        volumePolicies:
+          # NAS-backed volumes (Immich library, media vault, Syncthing) are
+          # protected by ZFS snapshots on TrueNAS, not by Velero.
+          - conditions:
+              csi:
+                driver: nfs.csi.k8s.io
+            action:
+              type: skip
+          # Large, regenerable time-series data (Prometheus 20Gi, Loki 10Gi).
+          - conditions:
+              capacity: "10Gi,"
+            action:
+              type: skip
+
+schedules:
+  daily:
+    schedule: "0 2 * * *"
+    useOwnerReferencesInBackup: false
+    skipImmediately: false
+    template:
+      ttl: 336h # 14 days
+      snapshotMoveData: true
+      excludedNamespaces:
+        - kube-system
+        - kube-public
+        - kube-node-lease
+        - velero
+      resourcePolicy:
+        kind: configmap
+        name: velero-volume-policy
+  weekly:
+    schedule: "0 4 * * 0"
+    useOwnerReferencesInBackup: false
+    skipImmediately: true
+    template:
+      ttl: 1344h # 8 weeks
+      snapshotMoveData: true
+      excludedNamespaces:
+        - kube-system
+        - kube-public
+        - kube-node-lease
+        - velero
+      resourcePolicy:
+        kind: configmap
+        name: velero-volume-policy
