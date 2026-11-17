@@ -1,0 +1,30 @@
+# CSI external-snapshotter: VolumeSnapshot CRDs and the snapshot controller.
+# Velero uses these to take point-in-time Longhorn snapshots before uploading
+# the data to its Kopia repository.
+
+installCRDs: true
+# Keep the CRDs (and every VolumeSnapshot) if the Application is ever removed.
+keepCRDs: true
+
+controller:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+volumeSnapshotClasses:
+  - name: longhorn-snapshot
+    labels:
+      # Velero picks the class carrying this label for Longhorn PVCs.
+      velero.io/csi-volumesnapshot-class: "true"
+    driver: driver.longhorn.io
+    deletionPolicy: Delete
+    parameters:
+      # "snap" keeps the snapshot inside the Longhorn volume (instant, no
+      # Longhorn backup target needed). Velero reads it and deletes it after
+      # the upload. "bak" would require a Longhorn backup target.
+      type: snap
