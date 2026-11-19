@@ -9,7 +9,7 @@ spec:
     # Docker Hub + ghcr.io pull-through cache (with web UI) for the self-hosted CI runners.
     - repoURL: https://zotregistry.dev/helm-charts
       chart: zot
-      targetRevision: 0.1.130
+      targetRevision: 0.1.135
       helm:
         releaseName: zot
         valueFiles:
