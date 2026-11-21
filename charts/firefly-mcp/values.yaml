@@ -5,8 +5,10 @@ image:
   # When set, digest takes precedence over tag.
   digest: ""
   pullPolicy: Always
-# Registry Secrets for pulling while the GHCR package is private.
-imagePullSecrets: []
+# The GHCR package is private. Externally managed docker-registry Secret with a
+# read:packages token; the chart never creates it.
+imagePullSecrets:
+  - name: ghcr-pull
 fullnameOverride: firefly-mcp
 
 # Public origin clients connect to. The MCP endpoint is <publicUrl>/mcp.

@@ -19,6 +19,7 @@ test('firefly-mcp: one locked-down pod with the token from an external Secret', 
   assert.equal(c.securityContext.readOnlyRootFilesystem, true);
   assert.deepEqual(c.envFrom, [{ secretRef: { name: 'firefly-mcp-secrets' } }]);
   assert.ok(!c.env.some(e => /TOKEN|PASSWORD/.test(e.name)), 'secrets come only from the Secret');
+  assert.deepEqual(pod.imagePullSecrets, [{ name: 'ghcr-pull' }]);
   assert.ok(docs.every(d => d.kind !== 'Secret'), 'the chart never creates the Secret');
 });
 

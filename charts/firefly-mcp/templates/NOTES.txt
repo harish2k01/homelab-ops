@@ -1,4 +1,5 @@
 firefly-mcp serves MCP at {{ .Values.publicUrl }}/mcp.
 
-The pod stays in CreateContainerConfigError until the Secret "{{ .Values.existingSecret }}"
+The pod needs the docker-registry Secret "ghcr-pull" to pull the private image, and
+stays in CreateContainerConfigError until the Secret "{{ .Values.existingSecret }}"
 exists in {{ .Release.Namespace }} with FIREFLY_TOKEN and FIREFLY_MCP_OWNER_PASSWORD.
