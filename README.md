@@ -46,8 +46,8 @@ configuration and dependencies involved in adapting it to another cluster.
 
 ## Personal application charts
 
-`charts/portfolio-next`, `charts/portfolio-tracker` and `charts/railwatch` are local
-charts for the personal portfolio, hobby tracker and train travel planner. Their Argo CD
+`charts/portfolio-next`, `charts/portfolio-tracker`, `charts/railwatch` and `charts/firefly-mcp` are local
+charts for the personal portfolio, hobby tracker, train travel planner and Firefly III MCP server. Their Argo CD
 Applications read these paths
 directly. They are not published through the public chart catalog or Helm OCI
 repository. The app container images remain in their existing GHCR repositories.

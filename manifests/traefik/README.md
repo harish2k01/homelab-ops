@@ -35,6 +35,7 @@ All app selection happens in Kubernetes:
 |---|---|
 | `bentopdf.harish2k01.xyz` | `bentopdf/bentopdf:80` |
 | `firefly.harish2k01.xyz` | `firefly-iii/firefly-iii:80` |
+| `firefly-mcp.harish2k01.xyz` | `firefly-iii/firefly-mcp:80` |
 | `jellyfin.harish2k01.xyz` | `media/jellyfin:8096` |
 | `harish2k01.xyz` | `portfolio/portfolio-next:80` |
 | `v1.harish2k01.xyz` | `portfolio/portfolio-prod:80` |
