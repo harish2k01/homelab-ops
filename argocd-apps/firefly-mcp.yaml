@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: firefly-mcp
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: firefly-iii
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3
+  source:
+    repoURL: https://github.com/harish2k01/homelab-ops
+    targetRevision: main
+    path: charts/firefly-mcp
+    helm:
+      releaseName: firefly-mcp

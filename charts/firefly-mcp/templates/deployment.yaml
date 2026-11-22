@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "firefly-mcp.fullname" . }}
+  labels:
+    {{- include "firefly-mcp.labels" . | nindent 4 }}
+spec:
+  # One writer for the SQLite file on a ReadWriteOnce volume.
+  replicas: 1
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "firefly-mcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "firefly-mcp.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: firefly-mcp
+          image: {{ include "firefly-mcp.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+          env:
+            - name: FIREFLY_MCP_TRANSPORT
+              value: http
+            - name: FIREFLY_MCP_PORT
+              value: {{ .Values.port | quote }}
+            - name: FIREFLY_MCP_PUBLIC_URL
+              value: {{ .Values.publicUrl | quote }}
+            - name: FIREFLY_URL
+              value: {{ .Values.fireflyUrl | quote }}
+            - name: FIREFLY_MCP_SCOPES
+              value: {{ .Values.scopes | quote }}
+            - name: FIREFLY_MCP_LOCALE
+              value: {{ .Values.locale | quote }}
+            - name: FIREFLY_MCP_STATE_DIR
+              value: /data
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "firefly-mcp.fullname" . }}-data
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

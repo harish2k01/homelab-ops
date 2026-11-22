@@ -1,0 +1,90 @@
+image:
+  repository: ghcr.io/harish2k01/firefly-mcp
+  # A published release (x.y.z); blank uses appVersion.
+  tag: "1.1.1"
+  # When set, digest takes precedence over tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+# The GHCR package is private. Externally managed docker-registry Secret with a
+# read:packages token; the chart never creates it.
+imagePullSecrets:
+  - name: ghcr-pull
+fullnameOverride: firefly-mcp
+
+# Public origin clients connect to. The MCP endpoint is <publicUrl>/mcp.
+publicUrl: https://firefly-mcp.harish2k01.xyz
+# Firefly III inside the cluster; API traffic stays in the cluster.
+fireflyUrl: http://firefly-iii.firefly-iii.svc.cluster.local
+# The most any OAuth client can be granted: read, read,write or read,write,destructive.
+scopes: read,write,destructive
+locale: en-IN
+
+# Externally managed Secret with FIREFLY_TOKEN and FIREFLY_MCP_OWNER_PASSWORD.
+# The chart never creates it; the pod waits until it exists.
+existingSecret: firefly-mcp-secrets
+
+port: 8080
+revisionHistoryLimit: 3
+
+persistence:
+  # SQLite state: import batches and OAuth tokens.
+  storageClassName: longhorn
+  size: 1Gi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 96Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+networkPolicy:
+  enabled: true
+  # Only the Gateway controller namespace may reach the server.
+  gatewayNamespace: traefik
+  # Firefly III pods: the only egress besides DNS.
+  firefly:
+    namespace: firefly-iii
+    podLabels:
+      app.kubernetes.io/name: firefly-iii
+    port: 8080
+
+service:
+  port: 80
+
+# Gateway API routes. Every enabled entry creates one HTTPRoute named <fullname>-<key>.
+httpRoutes:
+  internal:
+    enabled: true
+    parentRefs:
+      - name: traefik-gateway
+        namespace: traefik
+        sectionName: websecure
+    hostnames:
+      - firefly-mcp.k8s.harish2k01.xyz
+  external:
+    enabled: true
+    parentRefs:
+      - name: traefik-external-gateway
+        namespace: traefik
+        sectionName: websecure
+    hostnames:
+      - firefly-mcp.harish2k01.xyz
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
