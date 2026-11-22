@@ -3,7 +3,7 @@ name: firefly-mcp
 description: Remote MCP server that lets an AI agent manage Firefly III, with OAuth
 type: application
 version: 0.1.0
-appVersion: "0.3.0"
+appVersion: "1.1.1"
 home: https://github.com/harish2k01/firefly-mcp
 sources:
   - https://github.com/harish2k01/firefly-mcp
